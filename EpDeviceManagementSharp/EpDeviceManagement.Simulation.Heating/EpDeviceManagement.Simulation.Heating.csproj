@@ -2,12 +2,16 @@
 
     <PropertyGroup>
         <TargetFramework>net6.0</TargetFramework>
-        <LangVersion>default</LangVersion>
+        <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
     </PropertyGroup>
 
     <ItemGroup>
       <PackageReference Include="UnitsNet" Version="4.132.0" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\EpDeviceManagement\EpDeviceManagement.csproj" />
     </ItemGroup>
 
 </Project>
