@@ -1,8 +1,11 @@
 using System;
+using UnitsNet;
 
 namespace EpDeviceManagement.Contracts;
 
 public interface IDeferrableLoad : ILoad
 {
-    public TimeSpan MaximumPossibleDeferral { get; }
+    TimeSpan MaximumPossibleDeferral { get; }
+
+    Energy ExpectedTotalDemand { get; }
 }

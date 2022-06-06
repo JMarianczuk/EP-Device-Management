@@ -46,7 +46,8 @@ public class BatteryElectricStorage : IStorage
         var chargeDifference = timeStep *
                                (this.chargingLosses * chargeRate
                                 - this.dischargingLosses * dischargeRate);
-        var standingLoss = (this.standingLosses.Multiply(timeStep)) * this.CurrentStateOfCharge;
-        this.currentStateOfCharge = this.CurrentStateOfCharge + chargeDifference;
+        var standingLossRate = this.standingLosses.Times(this.CurrentStateOfCharge);
+        var standingLoss = standingLossRate * timeStep;
+        this.currentStateOfCharge = this.CurrentStateOfCharge + chargeDifference - standingLoss;
     }
 }

@@ -8,4 +8,9 @@ public static class FrequencyExtensions
     {
         return frequency.Hertz * timeSpan.TotalSeconds;
     }
+
+    public static Power Times(this Frequency frequency, Energy energy)
+    {
+        return Power.FromWatts(energy.Joules * frequency.PerSecond);
+    }
 }
