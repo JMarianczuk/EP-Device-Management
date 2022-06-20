@@ -7,27 +7,27 @@ namespace EpDeviceManagement.Simulation.Storage;
 public class BatteryElectricStorage : IStorage
 {
     private readonly Frequency standingLosses;
-    private readonly decimal chargingLosses;
-    private readonly decimal dischargingLosses;
+    private readonly decimal chargingEfficiency;
+    private readonly decimal dischargingEfficiency;
     private Energy currentStateOfCharge;
 
     public BatteryElectricStorage(
         Frequency standingLosses,
-        decimal chargingLosses,
-        decimal dischargingLosses)
+        Ratio chargingEfficiency,
+        Ratio dischargingEfficiency)
     {
-        if (chargingLosses is < 0 or > 1)
+        if (chargingEfficiency.DecimalFractions is < 0 or > 1)
         {
-            throw new ArgumentOutOfRangeException(nameof(chargingLosses));
+            throw new ArgumentOutOfRangeException(nameof(chargingEfficiency));
         }
 
-        if (dischargingLosses is < 1)
+        if (dischargingEfficiency.DecimalFractions is < 1)
         {
-            throw new ArgumentOutOfRangeException(nameof(dischargingLosses));
+            throw new ArgumentOutOfRangeException(nameof(dischargingEfficiency));
         }
         this.standingLosses = standingLosses;
-        this.chargingLosses = chargingLosses;
-        this.dischargingLosses = dischargingLosses;
+        this.chargingEfficiency = (decimal) chargingEfficiency.DecimalFractions;
+        this.dischargingEfficiency = (decimal) dischargingEfficiency.DecimalFractions;
     }
     
     public Energy TotalCapacity { get; init; }
@@ -44,10 +44,21 @@ public class BatteryElectricStorage : IStorage
     public void Simulate(TimeSpan timeStep, Power chargeRate, Power dischargeRate)
     {
         var chargeDifference = timeStep *
-                               (this.chargingLosses * chargeRate
-                                - this.dischargingLosses * dischargeRate);
+                               (this.chargingEfficiency * chargeRate
+                                - this.dischargingEfficiency * dischargeRate);
         var standingLossRate = this.standingLosses.Times(this.CurrentStateOfCharge);
         var standingLoss = standingLossRate * timeStep;
-        this.currentStateOfCharge = this.CurrentStateOfCharge + chargeDifference - standingLoss;
+        var newSoC = this.CurrentStateOfCharge + chargeDifference - standingLoss;
+        if (newSoC < Energy.Zero)
+        {
+            newSoC = Energy.Zero;
+        }
+
+        if (newSoC > this.TotalCapacity)
+        {
+            newSoC = this.TotalCapacity;
+        }
+
+        this.currentStateOfCharge = newSoC;
     }
 }

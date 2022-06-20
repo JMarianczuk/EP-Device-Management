@@ -7,29 +7,34 @@ namespace EpDeviceManagement.Simulation.Heating;
 public class ElectricWaterHeater : IUnidirectionalStorage
 {
     private readonly decimal heatTransferEfficiency;
-    private readonly TimeSpan ambientInsulationLosses;
+    private readonly TimeSpan ambientInsulationLossesTimeConstant;
     private readonly SpecificEntropy specificHeatCapacity;
     private readonly Density density;
+    private Temperature currentTemperature;
 
     public ElectricWaterHeater(
-        decimal heatTransferEfficiency,
-        TimeSpan ambientInsulationLosses,
+        Ratio heatTransferEfficiency,
+        TimeSpan ambientInsulationLossesTimeConstant,
         SpecificEntropy specificHeatCapacity,
         Density density)
     {
-        var spec = (new Energy() / new Mass()) / new TemperatureDelta(); 
-        if (heatTransferEfficiency is < 0 or > 1)
+        //var spec = (new Energy() / new Mass()) / new TemperatureDelta();
+        if (heatTransferEfficiency.DecimalFractions is < 0 or > 1)
         {
             throw new ArgumentOutOfRangeException(nameof(heatTransferEfficiency));
         }
-        this.heatTransferEfficiency = heatTransferEfficiency;
-        this.ambientInsulationLosses = ambientInsulationLosses;
+        this.heatTransferEfficiency = (decimal) heatTransferEfficiency.DecimalFractions;
+        this.ambientInsulationLossesTimeConstant = ambientInsulationLossesTimeConstant;
         this.specificHeatCapacity = specificHeatCapacity;
         this.density = density;
     }
 
-    public Temperature CurrentTemperature { get; private set; }
-    
+    public Temperature CurrentTemperature
+    {
+        get => currentTemperature;
+        init => currentTemperature = value;
+    }
+
     public Volume TotalWaterCapacity { get; init; }
     
     public Temperature MaximumWaterTemperature { get; init; }
@@ -48,12 +53,12 @@ public class ElectricWaterHeater : IUnidirectionalStorage
             ? (timeStep * (this.heatTransferEfficiency * heatElementPowerTransfer))
             .DivideBy(this.specificHeatCapacity.Multiply(this.density * this.TotalWaterCapacity))
             : TemperatureDelta.Zero;
-        var ambientLosses = (this.CurrentTemperature - ambientTemperature) * (timeStep / this.ambientInsulationLosses);
+        var ambientLosses = (this.CurrentTemperature - ambientTemperature) * (timeStep / this.ambientInsulationLossesTimeConstant);
         var inletLosses = (this.CurrentTemperature - inletTemperature) *
                           ((hotWaterWithdrawalRate.CubicMetersPerSecond / (60 * this.TotalWaterCapacity.CubicMeters)) * timeStep.TotalSeconds);
         var totalTemperatureChange = heatingIncrease - ambientLosses - inletLosses;
         var beforeSoC = this.CurrentStateOfCharge;
-        this.CurrentTemperature += totalTemperatureChange;
+        this.currentTemperature += totalTemperatureChange;
         this.CurrentLoss = (beforeSoC - this.CurrentStateOfCharge) / timeStep;
     }
 
@@ -69,7 +74,7 @@ public class ElectricWaterHeater : IUnidirectionalStorage
 
     private Energy ToEnergy(Temperature temperature)
     {
-        var offset = temperature - MinimumWaterTemperature;
+        var offset = temperature - this.MinimumWaterTemperature;
         return this.specificHeatCapacity 
             * offset
             *(this.TotalWaterCapacity * this.density);

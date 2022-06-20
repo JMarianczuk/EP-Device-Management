@@ -1,12 +1,21 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EpDeviceManagement", "EpDeviceManagement\EpDeviceManagement.csproj", "{13A330CE-9D12-4A8F-932F-EC01AA346AE5}"
+# Visual Studio Version 17
+VisualStudioVersion = 17.2.32602.215
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EpDeviceManagement", "EpDeviceManagement\EpDeviceManagement.csproj", "{13A330CE-9D12-4A8F-932F-EC01AA346AE5}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EpDeviceManagement.Simulation.Storage", "EpDeviceManagement.Simulation.Storage\EpDeviceManagement.Simulation.Storage.csproj", "{D60346D2-153E-4781-AD7C-CDA554E55345}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EpDeviceManagement.Simulation.Storage", "EpDeviceManagement.Simulation.Storage\EpDeviceManagement.Simulation.Storage.csproj", "{D60346D2-153E-4781-AD7C-CDA554E55345}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EpDeviceManagement.UnitsExtensions", "EpDeviceManagement.UnitsExtensions\EpDeviceManagement.UnitsExtensions.csproj", "{D3618706-C9A9-44FD-ABA9-59544A50D352}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EpDeviceManagement.UnitsExtensions", "EpDeviceManagement.UnitsExtensions\EpDeviceManagement.UnitsExtensions.csproj", "{D3618706-C9A9-44FD-ABA9-59544A50D352}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EpDeviceManagement.Simulation.Heating", "EpDeviceManagement.Simulation.Heating\EpDeviceManagement.Simulation.Heating.csproj", "{0C91F924-6EA2-42B5-B8F1-9B0271F69F86}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EpDeviceManagement.Simulation.Heating", "EpDeviceManagement.Simulation.Heating\EpDeviceManagement.Simulation.Heating.csproj", "{0C91F924-6EA2-42B5-B8F1-9B0271F69F86}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{FB185AFB-3991-43C8-B87E-0EE69CE5EFC7}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EpDeviceManagement.Simulation.Storage.Tests", "Tests\EpDeviceManagement.Simulation.Storage.Tests\EpDeviceManagement.Simulation.Storage.Tests.csproj", "{5790C1A1-E581-4B05-A547-04BFB8227DAA}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EpDeviceManagementSharp.Simulation.Heating.Tests", "Tests\EpDeviceManagementSharp.Simulation.Heating.Tests\EpDeviceManagementSharp.Simulation.Heating.Tests.csproj", "{57B69EF4-5D37-4A6D-AA41-068CA48A1A29}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -30,5 +39,23 @@ Global
 		{0C91F924-6EA2-42B5-B8F1-9B0271F69F86}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{0C91F924-6EA2-42B5-B8F1-9B0271F69F86}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{0C91F924-6EA2-42B5-B8F1-9B0271F69F86}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5790C1A1-E581-4B05-A547-04BFB8227DAA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5790C1A1-E581-4B05-A547-04BFB8227DAA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5790C1A1-E581-4B05-A547-04BFB8227DAA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5790C1A1-E581-4B05-A547-04BFB8227DAA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{57B69EF4-5D37-4A6D-AA41-068CA48A1A29}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{57B69EF4-5D37-4A6D-AA41-068CA48A1A29}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{57B69EF4-5D37-4A6D-AA41-068CA48A1A29}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{57B69EF4-5D37-4A6D-AA41-068CA48A1A29}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{5790C1A1-E581-4B05-A547-04BFB8227DAA} = {FB185AFB-3991-43C8-B87E-0EE69CE5EFC7}
+		{57B69EF4-5D37-4A6D-AA41-068CA48A1A29} = {FB185AFB-3991-43C8-B87E-0EE69CE5EFC7}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {BF9E786F-6811-4E4E-84A4-6ED6DF43701E}
 	EndGlobalSection
 EndGlobal
