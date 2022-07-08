@@ -8,6 +8,6 @@ public class ExampleMpc
         var timeStep = TimeSpan.FromMinutes(15);
         var predictionHorizon = TimeSpan.FromHours(8);
         var controlHorizon = 7 * timeStep;
-        formulation.Solve()
+        //formulation.Solve()
     }
 }

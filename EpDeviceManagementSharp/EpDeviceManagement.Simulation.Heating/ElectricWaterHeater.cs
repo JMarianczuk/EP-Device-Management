@@ -1,4 +1,4 @@
-using EpDeviceManagement.Contracts;
+﻿using EpDeviceManagement.Contracts;
 using EpDeviceManagement.UnitsExtensions;
 using UnitsNet;
 
@@ -70,6 +70,21 @@ public class ElectricWaterHeater : IUnidirectionalStorage
         this.CurrentLoss = (beforeSoC - this.CurrentStateOfCharge) / timeStep;
     }
 
+    public Power EquivalentLoss(
+        TimeSpan timeStep,
+        Temperature ambientTemperature,
+        VolumeFlow hotWaterWithdrawalRate,
+        Temperature inletTemperature)
+    {
+        var ambientLosses = (this.CurrentTemperature - ambientTemperature)
+                            * (timeStep / this.ambientInsulationLossesTimeConstant);
+        var inletLosses = (this.CurrentTemperature - inletTemperature)
+                          * ((hotWaterWithdrawalRate * timeStep)
+                             / this.TotalWaterCapacity);
+        var totalTemperatureChange = -ambientLosses - inletLosses;
+        return (ToEnergy(this.CurrentTemperature + totalTemperatureChange) - this.CurrentStateOfCharge) / timeStep;
+    }
+
     public Energy TotalCapacity => this.ToEnergy(this.MaximumWaterTemperature);
 
     public Energy CurrentStateOfCharge => this.ToEnergy(this.CurrentTemperature);
@@ -80,7 +95,7 @@ public class ElectricWaterHeater : IUnidirectionalStorage
     
     public Power CurrentLoss { get; private set; }
 
-    private Energy ToEnergy(Temperature temperature)
+    public Energy ToEnergy(Temperature temperature)
     {
         var offset = temperature - this.MinimumWaterTemperature;
         return this.specificHeatCapacity 

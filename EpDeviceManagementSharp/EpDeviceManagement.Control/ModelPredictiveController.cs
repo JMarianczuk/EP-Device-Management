@@ -63,5 +63,7 @@ public class ModelPredictiveController : IEpDeviceController
          * -> for sending a packet, receiving one, or even both
          * -> this has the lowest priority, because it is considered out of scope for the controller, as in it can not be guaranteed that a request will be made
          */
+
+        throw new NotImplementedException();
     }
 }

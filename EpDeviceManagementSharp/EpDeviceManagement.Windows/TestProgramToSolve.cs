@@ -1,5 +1,4 @@
 ﻿using LpSolveDotNet;
-using LpSolverBuilder;
 using UnitsNet;
 
 namespace EpDeviceManagement.Windows;
@@ -278,11 +277,12 @@ public class TestProgramToSolve
                 solver.add_constraint(baselineConstraint, lpsolve_constr_types.EQ, isBaseline ? 1 : 0);
             }
         }
-        var builder = new Builder();
 
+
+        int index = 1;
         IReadOnlyList<LpVariable> CreateVariables(int count)
         {
-            return Enumerable.Range(0, count).Select(_ => new LpVariable()).ToList();
+            return Enumerable.Range(0, count).Select(_ => new LpVariable(index++)).ToList();
         }
 
         var powerVariables = CreateVariables(numberOfAppliances);
@@ -290,29 +290,30 @@ public class TestProgramToSolve
         var additionalRuntimeVariables = CreateVariables(numberOfAppliances);
         var baselineVariables = new LpVariable[numberOfAppliances, numberOfSteps];
         var switchVariables = new LpVariable[numberOfAppliances, numberOfSteps];
-        var batteryChargingEfficiencyVariable = new LpVariable();
-        var batteryDischargingEfficiencyVariable = new LpVariable();
-        var maxCostVariable = new LpVariable();
-        var initialBatterySoCVariable = new LpVariable();
-        var minBatteryCapVariable = new LpVariable();
-        var maxBatteryCapVariable = new LpVariable();
-        var maxGridPowerVariable = new LpVariable();
+        var batteryChargingEfficiencyVariable = new LpVariable(index++);
+        var batteryDischargingEfficiencyVariable = new LpVariable(index++);
+        var maxCostVariable = new LpVariable(index++);
+        var initialBatterySoCVariable = new LpVariable(index++);
+        var minBatteryCapVariable = new LpVariable(index++);
+        var maxBatteryCapVariable = new LpVariable(index++);
+        var maxGridPowerVariable = new LpVariable(index++);
         var gridPowerVariables = CreateVariables(numberOfSteps);
         var totalAppliancesPowerVariables = CreateVariables(numberOfSteps);
-        var largestPowerPeakVariable = new LpVariable();
+        var largestPowerPeakVariable = new LpVariable(index++);
         var electricityPriceVariables = CreateVariables(numberOfSteps);
         for (int i = 0; i < numberOfAppliances; i += 1)
         {
             for (int t = 0; t < numberOfSteps; t += 1)
             {
-                baselineVariables[i, t] = new LpVariable();
-                switchVariables[i, t] = new LpVariable();
+                baselineVariables[i, t] = new LpVariable(index++);
+                switchVariables[i, t] = new LpVariable(index++);
             }
         }
+        var builder = new LpSolveDotNet.LpSolveDotNet(LpSolve.make_lp(0, index));
         for (int i = 0; i < numberOfAppliances; i += 1)
         {
-            builder.AddConstraint(powerVariables[i], LpConstraintType.GreaterThanOrEqual, 0);
-            builder.AddConstraint(powerVariables[i], LpConstraintType.LessThanOrEqual, appliances[i].RatedPower.Kilowatts);
+            builder.AddConstraint(powerVariables[i] >= 0);
+            builder.AddConstraint(powerVariables[i] <= appliances[i].RatedPower.Kilowatts);
             //builder.AddConstraint(powerVariables[i], LpConstraintType.Equal, appliances[i].RatedPower.Kilowatts);
             //builder.AddConstraint(durationVariables[i], LpConstraintType.Equal,
             //    appliances[i].Usages[0].Duration.TotalMinutes);
@@ -320,13 +321,13 @@ public class TestProgramToSolve
             for (int t = 0; t < numberOfSteps; t += 1)
             {
                 var isBaseline = blStart <= t && t < blStop;
-                builder.AddConstraint(baselineVariables[i, t], LpConstraintType.Equal, isBaseline ? 1 : 0);
+                builder.AddConstraint(baselineVariables[i, t] == (isBaseline ? 1d : 0d));
             }
         }
 
         for (int t = 0; t < numberOfSteps; t += 1)
         {
-            builder.AddConstraint(switchVariables[9, t] + switchVariables[10, t], LpConstraintType.LessThanOrEqual, 1);
+            builder.AddConstraint(switchVariables[9, t] + switchVariables[10, t] <= 1);
         }
     }
 }
