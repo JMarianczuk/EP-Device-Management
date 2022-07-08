@@ -1,4 +1,4 @@
-﻿
+
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.2.32602.215
@@ -8,7 +8,6 @@ EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EpDeviceManagement.Simulation.Storage", "EpDeviceManagement.Simulation.Storage\EpDeviceManagement.Simulation.Storage.csproj", "{D60346D2-153E-4781-AD7C-CDA554E55345}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EpDeviceManagement.UnitsExtensions", "EpDeviceManagement.UnitsExtensions\EpDeviceManagement.UnitsExtensions.csproj", "{D3618706-C9A9-44FD-ABA9-59544A50D352}"
-EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EpDeviceManagement.Simulation.Heating", "EpDeviceManagement.Simulation.Heating\EpDeviceManagement.Simulation.Heating.csproj", "{0C91F924-6EA2-42B5-B8F1-9B0271F69F86}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{FB185AFB-3991-43C8-B87E-0EE69CE5EFC7}"
@@ -39,10 +38,6 @@ Global
 		{D60346D2-153E-4781-AD7C-CDA554E55345}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{D60346D2-153E-4781-AD7C-CDA554E55345}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{D60346D2-153E-4781-AD7C-CDA554E55345}.Release|Any CPU.Build.0 = Release|Any CPU
-		{D3618706-C9A9-44FD-ABA9-59544A50D352}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{D3618706-C9A9-44FD-ABA9-59544A50D352}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{D3618706-C9A9-44FD-ABA9-59544A50D352}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{D3618706-C9A9-44FD-ABA9-59544A50D352}.Release|Any CPU.Build.0 = Release|Any CPU
 		{0C91F924-6EA2-42B5-B8F1-9B0271F69F86}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{0C91F924-6EA2-42B5-B8F1-9B0271F69F86}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{0C91F924-6EA2-42B5-B8F1-9B0271F69F86}.Release|Any CPU.ActiveCfg = Release|Any CPU

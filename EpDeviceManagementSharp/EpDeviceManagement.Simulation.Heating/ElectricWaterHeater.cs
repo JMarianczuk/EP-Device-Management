@@ -1,4 +1,4 @@
-﻿using EpDeviceManagement.Contracts;
+using EpDeviceManagement.Contracts;
 using EpDeviceManagement.UnitsExtensions;
 using UnitsNet;
 
@@ -54,9 +54,10 @@ public class ElectricWaterHeater : IUnidirectionalStorage
         VolumeFlow hotWaterWithdrawalRate,
         Temperature inletTemperature)
     {
+        var totalWaterWeight = this.density * this.TotalWaterCapacity;
         var heatingIncrease = heat
             ? (timeStep * (this.heatTransferEfficiency * heatElementPowerTransfer))
-            .DivideBy(this.specificHeatCapacity.Multiply(this.density * this.TotalWaterCapacity))
+            / (this.specificHeatCapacity * totalWaterWeight)
             : TemperatureDelta.Zero;
         var ambientLosses = (this.CurrentTemperature - ambientTemperature)
                             * (timeStep / this.ambientInsulationLossesTimeConstant);

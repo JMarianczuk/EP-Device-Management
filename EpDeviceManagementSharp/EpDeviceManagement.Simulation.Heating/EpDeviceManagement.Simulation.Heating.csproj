@@ -7,11 +7,10 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <PackageReference Include="UnitsNet" Version="4.134.0" />
+      <PackageReference Include="UnitsNet" Version="4.137.0" />
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\EpDeviceManagement.UnitsExtensions\EpDeviceManagement.UnitsExtensions.csproj" />
       <ProjectReference Include="..\EpDeviceManagement\EpDeviceManagement.csproj" />
     </ItemGroup>
 

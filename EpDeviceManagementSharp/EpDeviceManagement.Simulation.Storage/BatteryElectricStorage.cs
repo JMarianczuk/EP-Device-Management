@@ -46,7 +46,7 @@ public class BatteryElectricStorage : IStorage
         var chargeDifference = timeStep *
                                (this.chargingEfficiency * chargeRate
                                 - this.dischargingEfficiency * dischargeRate);
-        var standingLossRate = this.standingLosses.Times(this.CurrentStateOfCharge);
+        var standingLossRate = this.standingLosses * this.CurrentStateOfCharge;
         var standingLoss = standingLossRate * timeStep;
         var newSoC = this.CurrentStateOfCharge + chargeDifference - standingLoss;
         if (newSoC < Energy.Zero)

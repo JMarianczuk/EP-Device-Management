@@ -7,7 +7,6 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\EpDeviceManagement.UnitsExtensions\EpDeviceManagement.UnitsExtensions.csproj" />
       <ProjectReference Include="..\EpDeviceManagement\EpDeviceManagement.csproj" />
     </ItemGroup>
 
