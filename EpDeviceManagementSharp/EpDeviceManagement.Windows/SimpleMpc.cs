@@ -1,7 +1,6 @@
 ﻿using System.Diagnostics;
 using System.Globalization;
 using System.Runtime.CompilerServices;
-using EpDeviceManagement.UnitsExtensions;
 using LpSolveDotNet;
 using UnitsNet;
 

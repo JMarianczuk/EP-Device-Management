@@ -2,7 +2,6 @@
 using System.Globalization;
 using System.Runtime.CompilerServices;
 using BenchmarkDotNet.Attributes;
-using EpDeviceManagement.UnitsExtensions;
 using LpSolveDotNet;
 using UnitsNet;
 

@@ -1,5 +1,4 @@
 ﻿using EpDeviceManagement.Contracts;
-using EpDeviceManagement.UnitsExtensions;
 using UnitsNet;
 
 namespace EpDeviceManagement.Simulation.Heating;
