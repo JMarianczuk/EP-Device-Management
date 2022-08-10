@@ -10,29 +10,56 @@ namespace EpDeviceManagement.Data;
 
 public class ReadDataFromCsv
 {
-    public async Task<IEnumerable<EnergyDataSet>> Read()
+    public (IAsyncEnumerable<EnergyDataSet>, IDisposable) ReadAsync()
     {
-        using var reader = new StreamReader("household_data_15min_singleindex.csv");
-        using var csvReader = new CsvReader(reader, CultureInfo.InvariantCulture);
-        
-        var records = csvReader.GetRecordsAsync<EnergyDataSet>();
-
-        IList<EnergyDataSet> result = new List<EnergyDataSet>();
-        await foreach (var dataSet in records)
+        var reader = new StreamReader("household_data_15min_singleindex.csv");
+        var csvReader = new CsvReader(reader, new CsvConfiguration(CultureInfo.InvariantCulture)
         {
-            result.Add(dataSet);
+            MissingFieldFound = null,
+        });
+
+        var records = csvReader.GetRecordsAsync<EnergyDataSet>();
+        return (records, new DisposableCollection(new IDisposable[] {reader, csvReader}));
+
+        //IList<EnergyDataSet> result = new List<EnergyDataSet>();
+        //await foreach (var dataSet in records)
+        //{
+        //    result.Add(dataSet);
+        //}
+
+        //return result;
+    }
+
+    private class DisposableCollection : IDisposable
+    {
+        private readonly IEnumerable<IDisposable> disposables;
+        private bool disposed;
+
+        public DisposableCollection(IEnumerable<IDisposable> disposables)
+        {
+            this.disposables = disposables;
         }
 
-        return result;
+        public void Dispose()
+        {
+            if (!this.disposed)
+            {
+                this.disposed = true;
+                foreach (var d in this.disposables)
+                {
+                    d?.Dispose();
+                }
+            }
+        }
     }
 }
 
-[GenerateFromCsv("household_data_15min_singleindex.csv", DefaultType = typeof(double))]
-public partial class EnergyDataSet
-{
-    public DateTime utc_timestamp { get; set; }
+//[GenerateFromCsv("household_data_15min_singleindex.csv", DefaultType = typeof(double))]
+//public partial class EnergyDataSet
+//{
+//    public DateTime utc_timestamp { get; set; }
 
-    public DateTime cest_timestamp { get; set; }
+//    public DateTime cest_timestamp { get; set; }
 
-    public string interpolated { get; set; }
-}
+//    public string interpolated { get; set; }
+//}

@@ -15,8 +15,10 @@
 
   <ItemGroup>
     <ProjectReference Include="..\EpDeviceManagement.Control\EpDeviceManagement.Control.csproj" />
+    <ProjectReference Include="..\EpDeviceManagement.Data\EpDeviceManagement.Data.csproj" />
     <ProjectReference Include="..\EpDeviceManagement.Simulation.Heating\EpDeviceManagement.Simulation.Heating.csproj" />
     <ProjectReference Include="..\EpDeviceManagement.Simulation.Storage\EpDeviceManagement.Simulation.Storage.csproj" />
+    <ProjectReference Include="..\EpDeviceManagement.Simulation\EpDeviceManagement.Simulation.csproj" />
     <ProjectReference Include="..\EpDeviceManagement\EpDeviceManagement.csproj" />
     <ProjectReference Include="..\LpSolverBuilder\LpSolverBuilder.csproj" />
   </ItemGroup>

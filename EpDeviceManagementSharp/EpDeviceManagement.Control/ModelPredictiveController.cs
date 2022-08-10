@@ -12,7 +12,7 @@ public class ModelPredictiveController : IEpDeviceController
         this.battery = battery;
     }
 
-    public ControlDecision DoControl(TimeSpan timeStep, IEnumerable<ILoad> loads)
+    public ControlDecision DoControl(TimeSpan timeStep, IEnumerable<ILoad> loads, TransferResult lastTransferResult)
     {
         (
             var deferrable,

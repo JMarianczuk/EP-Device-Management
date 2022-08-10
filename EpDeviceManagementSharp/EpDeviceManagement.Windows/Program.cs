@@ -2,12 +2,14 @@
 
 using System.Diagnostics;
 using BenchmarkDotNet.Running;
+using EpDeviceManagement.Data;
+using EpDeviceManagement.Simulation;
 using EpDeviceManagement.Windows;
 using LpSolveDotNet;
 
 //Console.WriteLine("Hello, World!");
 
-EpDeviceManagementMpc.Solve();
+//EpDeviceManagementMpc.Solve();
 
 //BenchmarkRunner.Run<LpSolveBenchmark>();
 
@@ -20,3 +22,8 @@ EpDeviceManagementMpc.Solve();
 //s.IterationSetup();
 //s.SetupWithNewMethod();
 //s.IterationCleanup();
+
+
+var simulator = new Simulator();
+//await simulator.AnalyzeAsync();
+await simulator.SimulateAsync();

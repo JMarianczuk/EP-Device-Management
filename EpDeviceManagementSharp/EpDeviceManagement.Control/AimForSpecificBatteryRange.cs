@@ -1,29 +1,31 @@
-using EpDeviceManagement.Contracts;
+﻿using EpDeviceManagement.Contracts;
 using UnitsNet;
 
 namespace EpDeviceManagement.Control;
 
-public class AimForSpecificBatteryLevel : IEpDeviceController
+public class AimForSpecificBatteryRange : IEpDeviceController
 {
     private readonly IStorage battery;
-    private readonly Energy desiredStateOfCharge;
+    private readonly Energy desiredMinimumStateOfCharge;
+    private readonly Energy desiredMaximumStateOfCharge;
 
-    public AimForSpecificBatteryLevel(
+    public AimForSpecificBatteryRange(
         IStorage battery,
-        Energy desiredStateOfCharge)
+        Energy desiredMinimumStateOfCharge,
+        Energy desiredMaximumStateOfCharge)
     {
         this.battery = battery;
-        this.desiredStateOfCharge = desiredStateOfCharge;
+        this.desiredMinimumStateOfCharge = desiredMinimumStateOfCharge;
+        this.desiredMaximumStateOfCharge = desiredMaximumStateOfCharge;
     }
-
     public ControlDecision DoControl(TimeSpan timeStep, IEnumerable<ILoad> loads, TransferResult lastTransferResult)
     {
         PacketTransferDirection direction;
-        if (this.battery.CurrentStateOfCharge < this.desiredStateOfCharge)
+        if (this.battery.CurrentStateOfCharge < this.desiredMinimumStateOfCharge)
         {
             direction = PacketTransferDirection.Incoming;
         }
-        else if (this.battery.CurrentStateOfCharge > this.desiredStateOfCharge)
+        else if (this.battery.CurrentStateOfCharge > this.desiredMaximumStateOfCharge)
         {
             direction = PacketTransferDirection.Outgoing;
         }
@@ -35,12 +37,6 @@ public class AimForSpecificBatteryLevel : IEpDeviceController
         return new ControlDecision.RequestTransfer()
         {
             RequestedDirection = direction,
-            AcceptIncomingRequestIfOwnRequestFails = true,
         };
-    }
-
-    public override string ToString()
-    {
-        return $"{nameof(AimForSpecificBatteryLevel)}: [{this.desiredStateOfCharge}]";
     }
 }
