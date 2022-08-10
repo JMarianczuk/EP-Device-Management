@@ -3,7 +3,7 @@
 
 
 enhanced.json
-
+*.sqlite
 
 
 .idea
