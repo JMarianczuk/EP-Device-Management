@@ -1,20 +1,18 @@
-﻿using System.Collections.Concurrent;
+﻿using System.Collections;
+using System.Collections.Concurrent;
 using System.Diagnostics;
-using System.Net.Security;
-using System.Security.Cryptography;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 using EpDeviceManagement.Contracts;
 using EpDeviceManagement.Control;
+using EpDeviceManagement.Control.Strategy;
 using EpDeviceManagement.Data;
 using EpDeviceManagement.Simulation.Loads;
 using EpDeviceManagement.Simulation.Storage;
-using MoreLinq;
-using Newtonsoft.Json;
 using UnitsNet;
-using UnitsNet.Serialization.JsonNet;
+using System.Text.Json;
 using UnitsNet.Serialization.SystemTextJson;
-using JsonSerializer = System.Text.Json.JsonSerializer;
+
+using MoreEnumerable = MoreLinq.MoreEnumerable;
+using static MoreLinq.Extensions.CartesianExtension;
 
 namespace EpDeviceManagement.Simulation
 {
@@ -72,44 +70,76 @@ namespace EpDeviceManagement.Simulation
         public async Task SimulateAsync()
         {
             var timeStep = TimeSpan.FromMinutes(15);
-            
-            //var (data, handle) = new ReadDataFromCsv().ReadAsync();
-            //var enhancedData = await EnhanceAsync(data, timeStep);
-            //handle.Dispose();
 
-            //stopwatch.Restart();
-            //var jsonSettings = new JsonSerializerSettings
+            IReadOnlyList<EnhancedEnergyDataSet> enhancedData;
+            var (data, handle) = new ReadDataFromCsv().ReadAsync();
+            enhancedData = await EnhanceAsync(data, timeStep);
+            //IReadOnlyList<EnhancedEnergyDataSet> jsonData;
+            //using (var stream = File.OpenRead("enhanced.json"))
             //{
-            //    Formatting = Formatting.None,
-            //    Converters =
+            //    var options = new JsonSerializerOptions()
             //    {
-            //        new UnitsNetIQuantityJsonConverter(),
-            //    }
-            //};
-            //List<EnhancedEnergyDataSet> enhancedData2;
-            //using (var stream = File.OpenText("enhanced.json"))
-            //using (var reader = new JsonTextReader(stream))
-            //{
-            //    var serializer = Newtonsoft.Json.JsonSerializer.Create(jsonSettings);
-            //    enhancedData2 =
-            //        serializer.Deserialize<List<EnhancedEnergyDataSet>>(reader);
+            //        Converters =
+            //        {
+            //            new UnitsNetIQuantityJsonConverterFactory(),
+            //        }
+            //    };
+            //    jsonData = await JsonSerializer.DeserializeAsync<List<EnhancedEnergyDataSet>>(stream);
             //}
 
-            //stopwatch.Stop();
-            //Console.WriteLine(stopwatch.Elapsed);
-
-            List<EnhancedEnergyDataSet> enhancedData;
-            using (var stream = File.OpenRead("enhanced.json"))
+            //var zip = enhancedData.Zip(jsonData, MoreEnumerable.Generate(1, x => x + 1));
+            //var withDiff = zip.Where(tup =>
+            //{
+            //    var (left, right, _) = tup;
+            //    var isDifferent = left.Residential1_Freezer != right.Residential1_Freezer
+            //                      || left.Residential1_Dishwasher != right.Residential1_Dishwasher
+            //                      || left.Residential1_HeatPump != right.Residential1_HeatPump
+            //                      || left.Residential1_WashingMachine != right.Residential1_WashingMachine
+            //                      || left.Residential1_PV != right.Residential1_PV;
+            //    return isDifferent;
+            //}).ToList();
+            //var nonZero = jsonData.Where(x =>
+            //{
+            //    var isNonZero = x.Residential1_HeatPump != Power.Zero
+            //                    || x.Residential1_Dishwasher != Power.Zero
+            //                    || x.Residential1_Freezer != Power.Zero
+            //                    || x.Residential1_PV != Power.Zero
+            //                    || x.Residential1_WashingMachine != Power.Zero;
+            //    return isNonZero;
+            //}).ToList();
+            //var part = enhancedData.Skip(15400).Take(100).ToList();
+            var dataSets = new[]
             {
-                var options = new JsonSerializerOptions()
+                new DataSet()
                 {
-                    Converters =
-                    {
-                        new UnitsNetIQuantityJsonConverterFactory(),
-                    }
-                };
-                enhancedData = await JsonSerializer.DeserializeAsync<List<EnhancedEnergyDataSet>>(stream);
-            }
+                    Configuration = "Res1",
+                    Data = enhancedData,
+                },
+                new DataSet()
+                {
+                    Configuration = "Res1 noSolar",
+                    Data = enhancedData.Select(WithoutSolar).ToList(),
+                },
+            };
+            handle.Dispose();
+
+            var batteries = new List<BatteryConfiguration>
+            {
+                new BatteryConfiguration()
+                {
+                    CreateBattery = () => new BatteryElectricStorage(
+                        Frequency.FromCyclesPerHour(Ratio.FromPercent(3).DecimalFractions / TimeSpan.FromDays(1).TotalHours),
+                        Ratio.FromPercent(90),
+                        Ratio.FromPercent(110))
+                        {
+                            CurrentStateOfCharge = Energy.FromKilowattHours(6.75),
+                            TotalCapacity = Energy.FromKilowattHours(13.5),
+                            MaximumChargePower = Power.FromKilowatts(4.6),
+                            MaximumDischargePower = Power.FromKilowatts(4.6),
+                        },
+                    Description = "Tesla Powerwall",
+                },
+            };
 
             var strategies = new List<Func<Configuration, IEpDeviceController>>()
             {
@@ -119,16 +149,17 @@ namespace EpDeviceManagement.Simulation
             };
             var upperLimits = MoreEnumerable
                 .Generate(0.5d, x => x + 0.1d)
-                .TakeWhile(x => x <= 1)
+                .TakeWhile(x => x <= 0.9d)
                 .ToList();
             var lowerLimits = MoreEnumerable
                 .Generate(0.5d, x => x - 0.1d)
-                .TakeWhile(x => x >= 0)
+                .TakeWhile(x => x >= 0.1d)
                 .ToList();
             foreach (var (upper, lower) in upperLimits.Cartesian(lowerLimits, Tuple.Create))
             {
                 strategies.Add(config => new ProbabilisticModelingControl(
                     config.Battery,
+                    config.PacketSize,
                     config.Battery.TotalCapacity * upper,
                     config.Battery.TotalCapacity * lower,
                     config.Random));
@@ -137,26 +168,49 @@ namespace EpDeviceManagement.Simulation
             {
                 strategies.Add(config => new AimForSpecificBatteryLevel(
                     config.Battery,
+                    config.PacketSize,
                     config.Battery.TotalCapacity * upper));
             }
 
             var packetSizes = MoreEnumerable.Generate(0d, x => x + 0.5)
                 .Skip(1)
-                .Take(10)
+                .Take(8)
                 .Select(x => Energy.FromKilowattHours(x))
                 .ToList();
 
-            var packetProbabilities = MoreEnumerable.Sequence(5, 95, 5)
+            var packetProbabilities = MoreEnumerable.Sequence(10, 90, 10)
                 .Select(x => Ratio.FromPercent(x))
+                .Prepend(Ratio.FromPercent(5))
+                .Append(Ratio.FromPercent(95))
                 .ToList();
 
-            var allCombinations = packetSizes.Cartesian(strategies, packetProbabilities, Tuple.Create);
+            var timeSteps = new[]
+            {
+                timeStep,
+            };
+
+            var seeds = new[]
+            {
+                13254,
+            };
+
+            var allCombinations = packetSizes.Cartesian(
+                strategies, batteries, packetProbabilities, dataSets, timeSteps, seeds,
+                Tuple.Create);
+            var numberOfCombinations = GetNumberOfCombinations(
+                packetSizes, strategies, batteries, packetProbabilities, dataSets, timeSteps, seeds);
             IProducerConsumerCollection<SimulationResult> results = new ConcurrentBag<SimulationResult>();
 
             using (var progress = new ConsoleProgressBar())
             {
-                progress.Setup(packetSizes.Count * strategies.Count * packetProbabilities.Count, "Running the simulation");
+                progress.Setup(
+                    numberOfCombinations,
+                    "Running the simulation");
+#if DEBUG
+                Sequential.ForEach(
+#else
                 Parallel.ForEach(
+#endif
                     allCombinations,
                     new ParallelOptions()
                     {
@@ -164,39 +218,47 @@ namespace EpDeviceManagement.Simulation
                     },
                     combination =>
                     {
-                        var (packetSize, strategy, packetProbability) = combination;
+                        var (
+                            packetSize,
+                            strategy,
+                            battery,
+                            packetProbability,
+                            dataSet,
+                            simulationStep,
+                            seed
+                            ) = combination;
                         var res = SimulateSingle(
-                            timeStep,
+                            simulationStep,
                             strategy,
                             packetSize,
-                            enhancedData,
+                            dataSet,
                             packetProbability, 
-                            13254);
+                            seed,
+                            battery);
                         progress.FinishOne();
                         results.TryAdd(res);
                     });
             }
 
-            using (var stream = File.OpenWrite("results.txt"))
-            using (var writer = new StreamWriter(stream))
+            var resultsFileName = "results.txt";
+            File.Delete(resultsFileName);
+            await using (var stream = File.OpenWrite(resultsFileName))
+            await using (var writer = new StreamWriter(stream))
             {
-                foreach (var entry in results.OrderBy(x => x.PacketProbability.DecimalFractions).ThenBy(x => x.PacketSize.KilowattHours))
+                foreach (var entry in results)
                 {
-                    await writer.WriteLineAsync(string.Join('\t', "RESULT",
-                        $"strategy={entry.Strategy}",
-                        $"success={entry.Success}",
-                        $"steps={entry.StepsSimulated}",
-                        $"battery={entry.BatteryStateOfCharge}",
+                    await writer.WriteLineAsync(string.Join('\t',
+                        "RESULT",
+                        $"strategy={entry.StrategyName}",
+                        $"configuration={entry.StrategyConfiguration}",
+                        $"data={entry.DataConfiguration}",
+                        $"battery={entry.BatteryConfiguration}",
                         $"packetSize={entry.PacketSize}",
-                        $"probability={entry.PacketProbability}"));
-                    //if (entry.Success)
-                    //{
-                    //    Console.WriteLine($"S - Strategy '{entry.Strategy}' managed to control the complete sequence. Battery: {entry.BatteryStateOfCharge}, Packet size: {entry.PacketSize}, Packet probabilty: {entry.PacketProbability}");
-                    //}
-                    //else
-                    //{
-                    //    //Console.WriteLine($"F - Strategy '{entry.Strategy.GetType().Name}' went out of bounds after {entry.StepsSimulated} simulation steps. Battery: {entry.BatteryStateOfCharge}, Packet size: {entry.PacketSize}, Packet probabilty: {entry.PacketProbability}");
-                    //}
+                        $"probability={entry.PacketProbability}",
+                        $"success={entry.Success}",
+                        $"fail={entry.FailReason}",
+                        $"steps={entry.StepsSimulated}",
+                        $"seed={entry.Seed}"));
                 }
             }
         }
@@ -205,22 +267,14 @@ namespace EpDeviceManagement.Simulation
             TimeSpan timeStep,
             Func<Configuration, IEpDeviceController> createStrategy,
             Energy packetSize,
-            IEnumerable<EnhancedEnergyDataSet> enhancedData,
+            DataSet dataSet,
             Ratio packetProbability,
-            int seed)
+            int seed,
+            BatteryConfiguration batteryConfig)
         {
-            var battery = new BatteryElectricStorage(
-                Frequency.FromCyclesPerHour(0.02),
-                Ratio.FromPercent(90),
-                Ratio.FromPercent(110))
-            {
-                CurrentStateOfCharge = Energy.FromKilowattHours(5),
-                TotalCapacity = Energy.FromKilowattHours(10),
-                MaximumChargePower = Power.FromKilowatts(100),
-                MaximumDischargePower = Power.FromKilowatts(100),
-            };
             var random = new SeededRandomNumberGenerator(seed);
             TransferResult lastDecision = new TransferResult.NoTransferRequested();
+            var battery = batteryConfig.CreateBattery();
             var strategy = createStrategy(
                 new Configuration()
                 {
@@ -228,6 +282,20 @@ namespace EpDeviceManagement.Simulation
                     PacketSize = packetSize,
                     Random = random,
                 });
+//#if DEBUG
+//            if (strategy is ProbabilisticModelingControl pmc
+//                && pmc.Configuration == "[5.4 kWh, 12.15 kWh]"
+//                && dataSet.Configuration == "Res1"
+//                && packetSize.Equals(Energy.FromKilowattHours(3.5), 0.01, ComparisonType.Relative)
+//                && packetProbability.Equals(Ratio.FromPercent(80), 0.01, ComparisonType.Relative))
+//            {
+//                int p = 5;
+//            }
+//            else
+//            {
+//                return new SimulationResult();
+//            }
+//#endif
 
             UncontrollableLoad[] res1 = new UncontrollableLoad[4];
             for (int i = 0; i < res1.Length; i += 1)
@@ -249,9 +317,13 @@ namespace EpDeviceManagement.Simulation
             {
                 PacketProbability = packetProbability,
                 PacketSize = packetSize,
-                Strategy = strategy,
+                StrategyName = strategy.Name,
+                StrategyConfiguration = strategy.Configuration,
+                DataConfiguration = dataSet.Configuration,
+                BatteryConfiguration = $"{batteryConfig.Description} [{battery.TotalCapacity}]",
+                Seed = seed,
             };
-            foreach (var entry in enhancedData)
+            foreach (var entry in dataSet.Data)
             {
                 res1[0].CurrentDemand = entry.Residential1_Dishwasher;
                 res1[1].CurrentDemand = entry.Residential1_Freezer;
@@ -259,7 +331,14 @@ namespace EpDeviceManagement.Simulation
                 res1[3].CurrentDemand = entry.Residential1_WashingMachine;
                 res1gen[0].CurrentGeneration = entry.Residential1_PV;
 
-                var decision = strategy.DoControl(timeStep, res1, lastDecision);
+//#if DEBUG
+//                if (step >= 15490)
+//                {
+//                    int p = 6;
+//                }
+//#endif
+                
+                var decision = strategy.DoControl(timeStep, res1, res1gen, lastDecision);
                 Energy packet;
                 if (decision is ControlDecision.RequestTransfer rt)
                 {
@@ -271,7 +350,13 @@ namespace EpDeviceManagement.Simulation
                         : Energy.Zero;
                     lastDecision = success
                         ? new TransferResult.Success()
-                        : new TransferResult.Failure();
+                        {
+                            PerformedDirection = rt.RequestedDirection,
+                        }
+                        : new TransferResult.Failure()
+                        {
+                            RequestedDirection = rt.RequestedDirection,
+                        };
                 }
                 else
                 {
@@ -291,12 +376,21 @@ namespace EpDeviceManagement.Simulation
                 }
                 step += 1;
 
-                if (battery.CurrentStateOfCharge < Energy.FromKilowattHours(0.1)
-                    || battery.CurrentStateOfCharge > Energy.FromKilowattHours(9.9))
+
+                var belowZero = battery.CurrentStateOfCharge <= Energy.Zero;
+                var exceedCapacity = battery.CurrentStateOfCharge >= battery.TotalCapacity;
+                if (belowZero || exceedCapacity)
                 {
                     result.Success = false;
                     result.StepsSimulated = step;
-                    result.BatteryStateOfCharge = battery.CurrentStateOfCharge;
+                    if (belowZero)
+                    {
+                        result.FailReason = BatteryOutOfBoundsReason.BelowZero;
+                    }
+                    else if (exceedCapacity)
+                    {
+                        result.FailReason = BatteryOutOfBoundsReason.ExceedCapacity;
+                    }
                     return result;
                 }
 
@@ -304,8 +398,20 @@ namespace EpDeviceManagement.Simulation
 
             result.Success = true;
             result.StepsSimulated = step;
-            result.BatteryStateOfCharge = battery.CurrentStateOfCharge;
             return result;
+        }
+
+        private static EnhancedEnergyDataSet WithoutSolar(EnhancedEnergyDataSet data)
+        {
+            return new EnhancedEnergyDataSet()
+            {
+                Timestamp = data.Timestamp,
+                Residential1_Dishwasher = data.Residential1_Dishwasher,
+                Residential1_Freezer = data.Residential1_Freezer,
+                Residential1_HeatPump = data.Residential1_HeatPump,
+                Residential1_WashingMachine = data.Residential1_WashingMachine,
+                Residential1_PV = Power.Zero,
+            };
         }
 
         public async Task<IReadOnlyList<EnhancedEnergyDataSet>> EnhanceAsync(
@@ -335,33 +441,19 @@ namespace EpDeviceManagement.Simulation
                     Residential1_WashingMachine = (wash - wash_last) / timeStep,
                     Residential1_PV = (pv - pv_last) / timeStep,
                 });
+                dish_last = dish;
+                freeze_last = freeze;
+                heat_last = heat;
+                wash_last = wash;
+                pv_last = pv;
             }
 
             return result;
         }
-    }
 
-    public readonly struct Configuration
-    {
-        public IStorage Battery { get; init; }
-
-        public Energy PacketSize { get; init; }
-
-        public RandomNumberGenerator Random { get; init; }
-    }
-
-    public class SimulationResult
-    {
-        public Energy BatteryStateOfCharge { get; set; }
-
-        public int StepsSimulated { get; set; }
-
-        public Energy PacketSize { get; set; }
-
-        public Ratio PacketProbability { get; set; }
-
-        public bool Success { get; set; }
-
-        public IEpDeviceController Strategy { get; set; }
+        private static int GetNumberOfCombinations(params ICollection[] collections)
+        {
+            return collections.Aggregate(1, (num, collection) => num * collection.Count);
+        }
     }
 }

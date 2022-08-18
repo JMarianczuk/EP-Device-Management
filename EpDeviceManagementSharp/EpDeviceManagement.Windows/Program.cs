@@ -1,6 +1,7 @@
 ﻿// See https://aka.ms/new-console-template for more information
 
 using System.Diagnostics;
+using System.Globalization;
 using BenchmarkDotNet.Running;
 using EpDeviceManagement.Data;
 using EpDeviceManagement.Simulation;
@@ -23,6 +24,7 @@ using LpSolveDotNet;
 //s.SetupWithNewMethod();
 //s.IterationCleanup();
 
+CultureInfo.CurrentUICulture = CultureInfo.InvariantCulture;
 
 var simulator = new Simulator();
 //await simulator.AnalyzeAsync();

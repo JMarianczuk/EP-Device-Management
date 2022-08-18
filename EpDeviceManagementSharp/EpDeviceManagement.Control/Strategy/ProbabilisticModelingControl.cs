@@ -3,11 +3,10 @@ using EpDeviceManagement.Contracts;
 using Stateless;
 using UnitsNet;
 
-namespace EpDeviceManagement.Control;
+namespace EpDeviceManagement.Control.Strategy;
 
-public class ProbabilisticModelingControl : IEpDeviceController
+public class ProbabilisticModelingControl : CapacityRespectingStrategy, IEpDeviceController
 {
-    private readonly IStorage battery;
     private readonly Energy probabilisticModeUpperLimit;
     private readonly Energy probabilisticModeLowerLimit;
     private readonly StateMachine<State, Event> stateMachine;
@@ -18,18 +17,21 @@ public class ProbabilisticModelingControl : IEpDeviceController
 
     public ProbabilisticModelingControl(
         IStorage battery,
+        Energy packetSize,
         Energy probabilisticModeUpperLimit,
         Energy probabilisticModeLowerLimit,
         RandomNumberGenerator random)
+        : base(
+            battery,
+            packetSize)
     {
-        this.battery = battery;
         this.probabilisticModeUpperLimit = probabilisticModeUpperLimit;
         this.probabilisticModeLowerLimit = probabilisticModeLowerLimit;
         this.random = random;
 
-        this.p1probability = Ratio.FromPercent(70);
-        this.p2probability = Ratio.FromPercent(50);
-        this.p3probability = Ratio.FromPercent(30);
+        p1probability = Ratio.FromPercent(70);
+        p2probability = Ratio.FromPercent(50);
+        p3probability = Ratio.FromPercent(30);
 
         if (probabilisticModeUpperLimit < probabilisticModeLowerLimit)
         {
@@ -46,7 +48,7 @@ public class ProbabilisticModelingControl : IEpDeviceController
         {
             initialState = State.BatteryLow;
         }
-        this.stateMachine = BuildMachine(initialState);
+        stateMachine = BuildMachine(initialState);
     }
 
     public StateMachine<State, Event> BuildMachine(State initialState)
@@ -91,37 +93,38 @@ public class ProbabilisticModelingControl : IEpDeviceController
         return sm;
     }
 
-    public ControlDecision DoControl(TimeSpan timeStep, IEnumerable<ILoad> loads, TransferResult transferResult)
+    public ControlDecision DoControl(TimeSpan timeStep, IEnumerable<ILoad> loads, IEnumerable<IGenerator> generators, TransferResult transferResult)
     {
-        if (this.battery.CurrentStateOfCharge > this.probabilisticModeUpperLimit)
+        if (this.Battery.CurrentStateOfCharge > probabilisticModeUpperLimit)
         {
-            this.stateMachine.Fire(Event.BatteryAboveSetpoint);
+            stateMachine.Fire(Event.BatteryAboveSetpoint);
         }
-        else if (this.battery.CurrentStateOfCharge < this.probabilisticModeLowerLimit)
+        else if (this.Battery.CurrentStateOfCharge < probabilisticModeLowerLimit)
         {
-            this.stateMachine.Fire(Event.BatteryBelowSetpoint);
+            stateMachine.Fire(Event.BatteryBelowSetpoint);
         }
         else
         {
-            this.stateMachine.Fire(Event.BatteryWithinLimits);
+            stateMachine.Fire(Event.BatteryWithinLimits);
         }
 
         switch (transferResult)
         {
             case TransferResult.Success _:
-                this.stateMachine.Fire(Event.TransferAccepted);
+                stateMachine.Fire(Event.TransferAccepted);
                 break;
             case TransferResult.Failure _:
-                this.stateMachine.Fire(Event.TransferDenied);
+                stateMachine.Fire(Event.TransferDenied);
                 break;
             case TransferResult.NoTransferRequested _:
                 break;
         }
 
-        switch (this.stateMachine.State)
+        switch (stateMachine.State)
         {
             case State.BatteryLow:
             {
+                loads = loads is ICollection<ILoad> list ? list : loads.ToList();
                 var interruptibles = loads.OfType<IInterruptibleLoad>().ToList();
                 foreach (var i in interruptibles)
                 {
@@ -131,13 +134,19 @@ public class ProbabilisticModelingControl : IEpDeviceController
                     }
                 }
 
-                return new ControlDecision.RequestTransfer()
+                if (CanRequestIncoming(timeStep, loads, generators))
                 {
-                    RequestedDirection = PacketTransferDirection.Incoming,
-                };
+                    return new ControlDecision.RequestTransfer()
+                    {
+                        RequestedDirection = PacketTransferDirection.Incoming,
+                    };
+                }
+
+                break;
             }
             case State.P1:
-                if (this.random.NextDouble() <= this.p1probability.DecimalFractions)
+                if (random.NextDouble() <= p1probability.DecimalFractions
+                    && this.CanRequestIncoming(timeStep, loads, generators))
                 {
                     return new ControlDecision.RequestTransfer()
                     {
@@ -149,7 +158,8 @@ public class ProbabilisticModelingControl : IEpDeviceController
                     return new ControlDecision.NoAction();
                 }
             case State.P2:
-                if (this.random.NextDouble() <= this.p2probability.DecimalFractions)
+                if (random.NextDouble() <= p2probability.DecimalFractions
+                    && this.CanRequestIncoming(timeStep, loads, generators))
                 {
                     return new ControlDecision.RequestTransfer()
                     {
@@ -161,7 +171,8 @@ public class ProbabilisticModelingControl : IEpDeviceController
                     return new ControlDecision.NoAction();
                 }
             case State.P3:
-                if (this.random.NextDouble() <= p3probability.DecimalFractions)
+                if (random.NextDouble() <= p3probability.DecimalFractions
+                    && this.CanRequestIncoming(timeStep, loads, generators))
                 {
                     return new ControlDecision.RequestTransfer()
                     {
@@ -174,7 +185,8 @@ public class ProbabilisticModelingControl : IEpDeviceController
                 }
             case State.BatteryHigh:
             {
-                var interruptibles = loads.OfType<IInterruptibleLoad>().ToList();
+                loads = loads is ICollection<ILoad> list ? list : loads.ToList();
+                var interruptibles = loads.OfType<IInterruptibleLoad>();
                 foreach (var i in interruptibles)
                 {
                     if (i.IsCurrentlyInInterruptedState && i.CanCurrentlyBeResumed)
@@ -183,20 +195,24 @@ public class ProbabilisticModelingControl : IEpDeviceController
                     }
                 }
 
-                return new ControlDecision.RequestTransfer()
+                if (this.CanRequestOutgoing(timeStep, loads, generators))
                 {
-                    RequestedDirection = PacketTransferDirection.Outgoing,
-                };
+                    return new ControlDecision.RequestTransfer()
+                    {
+                        RequestedDirection = PacketTransferDirection.Outgoing,
+                    };
+                }
+
+                break;
             }
         }
 
         return new ControlDecision.NoAction();
     }
 
-    public override string ToString()
-    {
-        return $"{nameof(ProbabilisticModelingControl)}: [{this.probabilisticModeLowerLimit}, {this.probabilisticModeUpperLimit}]";
-    }
+    public string Name => nameof(ProbabilisticModelingControl);
+
+    public string Configuration => $"[{probabilisticModeLowerLimit}, {probabilisticModeUpperLimit}]";
 
     public enum State
     {

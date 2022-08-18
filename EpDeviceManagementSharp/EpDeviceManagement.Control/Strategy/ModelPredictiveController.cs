@@ -1,7 +1,7 @@
 using EpDeviceManagement.Contracts;
 using UnitsNet;
 
-namespace EpDeviceManagement.Control;
+namespace EpDeviceManagement.Control.Strategy;
 
 public class ModelPredictiveController : IEpDeviceController
 {
@@ -12,14 +12,14 @@ public class ModelPredictiveController : IEpDeviceController
         this.battery = battery;
     }
 
-    public ControlDecision DoControl(TimeSpan timeStep, IEnumerable<ILoad> loads, TransferResult lastTransferResult)
+    public ControlDecision DoControl(TimeSpan timeStep, IEnumerable<ILoad> loads, IEnumerable<IGenerator> generators, TransferResult lastTransferResult)
     {
         (
             var deferrable,
             var interruptible,
             loads
         ) = loads.GroupByDerivingType<IDeferrableLoad, IInterruptibleLoad, ILoad>();
-        
+
         // come to a decision if energy needs to be added to battery
         // example: per step 1kWh needs to be added for 5 steps
         //          per step 0.5kWh needs to be shifted to 3 steps into the future
@@ -39,7 +39,7 @@ public class ModelPredictiveController : IEpDeviceController
                 totalShiftPower -= def.CurrentDemand;
             }
         }
-        
+
         /*
          * Priorities of the available decisions:
          * 1. Request to send/receive packets to/from the grid
@@ -66,4 +66,8 @@ public class ModelPredictiveController : IEpDeviceController
 
         throw new NotImplementedException();
     }
+
+    public string Name => nameof(ModelPredictiveController);
+
+    public string Configuration => string.Empty;
 }
