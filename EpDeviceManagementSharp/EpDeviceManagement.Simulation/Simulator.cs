@@ -174,7 +174,7 @@ namespace EpDeviceManagement.Simulation
 
             var packetSizes = MoreEnumerable.Generate(0d, x => x + 0.5)
                 .Skip(1)
-                .Take(8)
+                .Take(10)
                 .Select(x => Energy.FromKilowattHours(x))
                 .ToList();
 
@@ -192,6 +192,7 @@ namespace EpDeviceManagement.Simulation
             var seeds = new[]
             {
                 13254,
+                148354,
             };
 
             var allCombinations = packetSizes.Cartesian(
@@ -242,9 +243,11 @@ namespace EpDeviceManagement.Simulation
 
             var resultsFileName = "results.txt";
             File.Delete(resultsFileName);
+            using (var progress = new ConsoleProgressBar())
             await using (var stream = File.OpenWrite(resultsFileName))
             await using (var writer = new StreamWriter(stream))
             {
+                progress.Setup(results.Count, "Writing the results");
                 foreach (var entry in results)
                 {
                     await writer.WriteLineAsync(string.Join('\t',
@@ -253,12 +256,17 @@ namespace EpDeviceManagement.Simulation
                         $"configuration={entry.StrategyConfiguration}",
                         $"data={entry.DataConfiguration}",
                         $"battery={entry.BatteryConfiguration}",
+                        $"batteryMin={entry.BatteryMinSoC}",
+                        $"batteryMax={entry.BatteryMaxSoC}",
+                        $"batteryAvg={entry.BatteryAvgSoC}",
                         $"packetSize={entry.PacketSize}",
                         $"probability={entry.PacketProbability}",
+                        $"timeStep={entry.TimeStep}",
                         $"success={entry.Success}",
                         $"fail={entry.FailReason}",
                         $"steps={entry.StepsSimulated}",
                         $"seed={entry.Seed}"));
+                    progress.FinishOne();
                 }
             }
         }
@@ -317,12 +325,16 @@ namespace EpDeviceManagement.Simulation
             {
                 PacketProbability = packetProbability,
                 PacketSize = packetSize,
+                TimeStep = timeStep,
                 StrategyName = strategy.Name,
                 StrategyConfiguration = strategy.Configuration,
                 DataConfiguration = dataSet.Configuration,
                 BatteryConfiguration = $"{batteryConfig.Description} [{battery.TotalCapacity}]",
                 Seed = seed,
             };
+            var batteryMinSoC = battery.CurrentStateOfCharge;
+            var batteryMaxSoC = battery.CurrentStateOfCharge;
+            var batterySoCSum = battery.CurrentStateOfCharge;
             foreach (var entry in dataSet.Data)
             {
                 res1[0].CurrentDemand = entry.Residential1_Dishwasher;
@@ -376,6 +388,9 @@ namespace EpDeviceManagement.Simulation
                 }
                 step += 1;
 
+                batteryMinSoC = Units.Min(batteryMinSoC, battery.CurrentStateOfCharge);
+                batteryMaxSoC = Units.Max(batteryMaxSoC, battery.CurrentStateOfCharge);
+                batterySoCSum += battery.CurrentStateOfCharge;
 
                 var belowZero = battery.CurrentStateOfCharge <= Energy.Zero;
                 var exceedCapacity = battery.CurrentStateOfCharge >= battery.TotalCapacity;
@@ -398,6 +413,9 @@ namespace EpDeviceManagement.Simulation
 
             result.Success = true;
             result.StepsSimulated = step;
+            result.BatteryMinSoC = batteryMinSoC;
+            result.BatteryMaxSoC = batteryMaxSoC;
+            result.BatteryAvgSoC = batterySoCSum / step;
             return result;
         }
 

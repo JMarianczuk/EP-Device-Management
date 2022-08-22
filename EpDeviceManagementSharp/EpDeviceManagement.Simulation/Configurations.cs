@@ -38,6 +38,8 @@ public class SimulationResult
 
     public Ratio PacketProbability { get; set; }
 
+    public TimeSpan TimeStep { get; set; }
+
     public bool Success { get; set; }
 
     public BatteryOutOfBoundsReason FailReason { get; set; }
@@ -49,6 +51,12 @@ public class SimulationResult
     public string DataConfiguration { get; set; }
 
     public int Seed { get; set; }
+
+    public Energy BatteryMinSoC { get; set; }
+
+    public Energy BatteryMaxSoC { get; set; }
+
+    public Energy BatteryAvgSoC { get; set; }
 }
 
 public enum BatteryOutOfBoundsReason

@@ -31,7 +31,7 @@ do_plot <- function(data_name, title, file_name) {
         size = size)
         ) +
         geom_jitter() +
-        labs(x = "probability", title = title)
+        labs(x = "probability", title = title, size = "number of successful control passes")
 
     ggsave(file_name, thisplot, width=25, height=10, units="cm")
 }
