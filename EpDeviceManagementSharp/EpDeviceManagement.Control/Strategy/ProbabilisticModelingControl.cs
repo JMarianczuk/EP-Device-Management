@@ -1,12 +1,13 @@
 ﻿using System.Security.Cryptography;
 using EpDeviceManagement.Contracts;
 using EpDeviceManagement.Control.Strategy.Base;
+using EpDeviceManagement.Control.Strategy.Guards;
 using Stateless;
 using UnitsNet;
 
 namespace EpDeviceManagement.Control.Strategy;
 
-public class ProbabilisticModelingControl : PowerRespectingStrategy, IEpDeviceController
+public class ProbabilisticModelingControl : GuardedStrategy, IEpDeviceController
 {
     private readonly Ratio probabilisticModeLowerLevel;
     private readonly Ratio probabilisticModeUpperLevel;
@@ -25,9 +26,11 @@ public class ProbabilisticModelingControl : PowerRespectingStrategy, IEpDeviceCo
         Ratio probabilisticModeUpperLevel,
         RandomNumberGenerator random)
         : base(
-            battery,
-            packetSize)
+            new BatteryCapacityGuard(battery, packetSize),
+            new BatteryPowerGuard(battery, packetSize),
+            new OscillationGuard())
     {
+        Battery = battery;
         this.random = random;
 
         p1probability = Ratio.FromPercent(70);
@@ -69,6 +72,8 @@ public class ProbabilisticModelingControl : PowerRespectingStrategy, IEpDeviceCo
         }
         stateMachine = BuildMachine(initialState);
     }
+
+    private IStorage Battery { get; }
 
     public StateMachine<State, Event> BuildMachine(State initialState)
     {
@@ -112,7 +117,11 @@ public class ProbabilisticModelingControl : PowerRespectingStrategy, IEpDeviceCo
         return sm;
     }
 
-    public ControlDecision DoControl(TimeSpan timeStep, IEnumerable<ILoad> loads, IEnumerable<IGenerator> generators, TransferResult transferResult)
+    protected override ControlDecision DoUnguardedControl(
+        TimeSpan timeStep,
+        IEnumerable<ILoad> loads,
+        IEnumerable<IGenerator> generators,
+        TransferResult transferResult)
     {
         if (this.Battery.CurrentStateOfCharge > probabilisticModeUpperLimit)
         {
@@ -153,19 +162,13 @@ public class ProbabilisticModelingControl : PowerRespectingStrategy, IEpDeviceCo
                     }
                 }
 
-                if (CanRequestIncoming(timeStep, loads, generators))
+                return new ControlDecision.RequestTransfer()
                 {
-                    return new ControlDecision.RequestTransfer()
-                    {
-                        RequestedDirection = PacketTransferDirection.Incoming,
-                    };
-                }
-
-                break;
+                    RequestedDirection = PacketTransferDirection.Incoming,
+                };
             }
             case State.P1:
-                if (random.NextDouble() <= p1probability.DecimalFractions
-                    && this.CanRequestIncoming(timeStep, loads, generators))
+                if (random.NextDouble() <= p1probability.DecimalFractions)
                 {
                     return new ControlDecision.RequestTransfer()
                     {
@@ -177,8 +180,7 @@ public class ProbabilisticModelingControl : PowerRespectingStrategy, IEpDeviceCo
                     return new ControlDecision.NoAction();
                 }
             case State.P2:
-                if (random.NextDouble() <= p2probability.DecimalFractions
-                    && this.CanRequestIncoming(timeStep, loads, generators))
+                if (random.NextDouble() <= p2probability.DecimalFractions)
                 {
                     return new ControlDecision.RequestTransfer()
                     {
@@ -190,8 +192,7 @@ public class ProbabilisticModelingControl : PowerRespectingStrategy, IEpDeviceCo
                     return new ControlDecision.NoAction();
                 }
             case State.P3:
-                if (random.NextDouble() <= p3probability.DecimalFractions
-                    && this.CanRequestIncoming(timeStep, loads, generators))
+                if (random.NextDouble() <= p3probability.DecimalFractions)
                 {
                     return new ControlDecision.RequestTransfer()
                     {
@@ -213,28 +214,23 @@ public class ProbabilisticModelingControl : PowerRespectingStrategy, IEpDeviceCo
                         i.Resume();
                     }
                 }
-
-                if (this.CanRequestOutgoing(timeStep, loads, generators))
+                    
+                return new ControlDecision.RequestTransfer()
                 {
-                    return new ControlDecision.RequestTransfer()
-                    {
-                        RequestedDirection = PacketTransferDirection.Outgoing,
-                    };
-                }
-
-                break;
+                    RequestedDirection = PacketTransferDirection.Outgoing,
+                };
             }
         }
 
         return new ControlDecision.NoAction();
     }
 
-    public string Name => nameof(ProbabilisticModelingControl);
+    public override string Name => nameof(ProbabilisticModelingControl);
 
-    public string Configuration =>
+    public override string Configuration =>
         $"[{this.probabilisticModeLowerLevel.DecimalFractions:F2}, {this.probabilisticModeUpperLevel.DecimalFractions:F2}]";
 
-    public string PrettyConfiguration => $"[{probabilisticModeLowerLimit}, {probabilisticModeUpperLimit}]";
+    public override string PrettyConfiguration => $"[{probabilisticModeLowerLimit}, {probabilisticModeUpperLimit}]";
 
     public enum State
     {

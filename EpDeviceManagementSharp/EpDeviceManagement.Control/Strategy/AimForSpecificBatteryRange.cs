@@ -1,10 +1,11 @@
 ﻿using EpDeviceManagement.Contracts;
 using EpDeviceManagement.Control.Strategy.Base;
+using EpDeviceManagement.Control.Strategy.Guards;
 using UnitsNet;
 
 namespace EpDeviceManagement.Control.Strategy;
 
-public class AimForSpecificBatteryRange : PowerRespectingStrategy, IEpDeviceController
+public class AimForSpecificBatteryRange : GuardedStrategy, IEpDeviceController
 {
     private readonly Ratio desiredMinimumLevel;
     private readonly Ratio desiredMaximumLevel;
@@ -17,8 +18,9 @@ public class AimForSpecificBatteryRange : PowerRespectingStrategy, IEpDeviceCont
         Ratio desiredMinimumLevel,
         Ratio desiredMaximumLevel)
         : base(
-            battery,
-            packetSize)
+            new BatteryCapacityGuard(battery, packetSize),
+            new BatteryPowerGuard(battery, packetSize),
+            new OscillationGuard())
     {
         if (desiredMinimumLevel > desiredMaximumLevel)
         {
@@ -32,6 +34,8 @@ public class AimForSpecificBatteryRange : PowerRespectingStrategy, IEpDeviceCont
                 "cannot be below zero");
         }
 
+        Battery = battery;
+
         if (desiredMaximumLevel > Ratio.FromPercent(100))
         {
             throw new ArgumentOutOfRangeException(nameof(desiredMaximumLevel), desiredMaximumLevel,
@@ -43,16 +47,21 @@ public class AimForSpecificBatteryRange : PowerRespectingStrategy, IEpDeviceCont
         this.desiredMinimumStateOfCharge = battery.TotalCapacity * desiredMinimumLevel.DecimalFractions;
         this.desiredMaximumStateOfCharge = battery.TotalCapacity * desiredMaximumLevel.DecimalFractions;
     }
-    public ControlDecision DoControl(TimeSpan timeStep, IEnumerable<ILoad> loads, IEnumerable<IGenerator> generators, TransferResult lastTransferResult)
+
+    private IStorage Battery { get; }
+
+    protected override ControlDecision DoUnguardedControl(
+        TimeSpan timeStep,
+        IEnumerable<ILoad> loads,
+        IEnumerable<IGenerator> generators,
+        TransferResult lastTransferResult)
     {
         PacketTransferDirection direction;
-        if (this.Battery.CurrentStateOfCharge < desiredMinimumStateOfCharge
-            && this.CanRequestIncoming(timeStep, loads, generators))
+        if (this.Battery.CurrentStateOfCharge < desiredMinimumStateOfCharge)
         {
             direction = PacketTransferDirection.Incoming;
         }
-        else if (this.Battery.CurrentStateOfCharge > desiredMaximumStateOfCharge
-            && this.CanRequestOutgoing(timeStep, loads, generators))
+        else if (this.Battery.CurrentStateOfCharge > desiredMaximumStateOfCharge)
         {
             direction = PacketTransferDirection.Outgoing;
         }
@@ -67,9 +76,9 @@ public class AimForSpecificBatteryRange : PowerRespectingStrategy, IEpDeviceCont
         };
     }
 
-    public string Name => nameof(AimForSpecificBatteryRange);
+    public override string Name => nameof(AimForSpecificBatteryRange);
 
-    public string Configuration => $"[{this.desiredMinimumLevel.DecimalFractions:F2}, {this.desiredMaximumLevel.DecimalFractions:F2}]";
+    public override string Configuration => $"[{this.desiredMinimumLevel.DecimalFractions:F2}, {this.desiredMaximumLevel.DecimalFractions:F2}]";
 
-    public string PrettyConfiguration => $"[{desiredMinimumStateOfCharge},{desiredMaximumStateOfCharge}]";
+    public override string PrettyConfiguration => $"[{desiredMinimumStateOfCharge},{desiredMaximumStateOfCharge}]";
 }

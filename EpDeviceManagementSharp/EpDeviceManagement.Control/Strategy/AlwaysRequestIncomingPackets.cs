@@ -1,38 +1,36 @@
 ﻿using EpDeviceManagement.Contracts;
 using EpDeviceManagement.Control.Strategy.Base;
+using EpDeviceManagement.Control.Strategy.Guards;
 using UnitsNet;
 
 namespace EpDeviceManagement.Control.Strategy;
 
-public class AlwaysRequestIncomingPackets : PowerRespectingStrategy, IEpDeviceController
+public class AlwaysRequestIncomingPackets : GuardedStrategy, IEpDeviceController
 {
     public AlwaysRequestIncomingPackets(
         IStorage battery,
         Energy packetSize)
         : base(
-            battery,
-            packetSize)
+            new BatteryCapacityGuard(battery, packetSize),
+            new BatteryPowerGuard(battery, packetSize))
     {
     }
 
-    public ControlDecision DoControl(TimeSpan timeStep, IEnumerable<ILoad> loads, IEnumerable<IGenerator> generators, TransferResult lastTransferResult)
+    protected override ControlDecision DoUnguardedControl(
+        TimeSpan timeStep,
+        IEnumerable<ILoad> loads,
+        IEnumerable<IGenerator> generators,
+        TransferResult lastTransferResult)
     {
-        if (this.CanRequestIncoming(timeStep, loads, generators))
+        return new ControlDecision.RequestTransfer()
         {
-            return new ControlDecision.RequestTransfer()
-            {
-                RequestedDirection = PacketTransferDirection.Incoming,
-            };
-        }
-        else
-        {
-            return new ControlDecision.NoAction();
-        }
+            RequestedDirection = PacketTransferDirection.Incoming,
+        };
     }
 
-    public string Name => nameof(AlwaysRequestIncomingPackets);
+    public override string Name => nameof(AlwaysRequestIncomingPackets);
 
-    public string Configuration => string.Empty;
+    public override string Configuration => string.Empty;
 
-    public string PrettyConfiguration => string.Empty;
+    public override string PrettyConfiguration => string.Empty;
 }
