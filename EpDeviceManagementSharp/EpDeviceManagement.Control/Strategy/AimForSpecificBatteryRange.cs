@@ -1,41 +1,47 @@
 ﻿using EpDeviceManagement.Contracts;
+using EpDeviceManagement.Control.Strategy.Base;
 using UnitsNet;
 
 namespace EpDeviceManagement.Control.Strategy;
 
-public class AimForSpecificBatteryRange : CapacityRespectingStrategy, IEpDeviceController
+public class AimForSpecificBatteryRange : PowerRespectingStrategy, IEpDeviceController
 {
+    private readonly Ratio desiredMinimumLevel;
+    private readonly Ratio desiredMaximumLevel;
     private readonly Energy desiredMinimumStateOfCharge;
     private readonly Energy desiredMaximumStateOfCharge;
 
     public AimForSpecificBatteryRange(
         IStorage battery,
         Energy packetSize,
-        Energy desiredMinimumStateOfCharge,
-        Energy desiredMaximumStateOfCharge)
+        Ratio desiredMinimumLevel,
+        Ratio desiredMaximumLevel)
         : base(
             battery,
             packetSize)
     {
-        if (desiredMinimumStateOfCharge > desiredMaximumStateOfCharge)
+        if (desiredMinimumLevel > desiredMaximumLevel)
         {
             throw new ArgumentException(
-                $"{nameof(desiredMinimumStateOfCharge)} ({desiredMinimumStateOfCharge}) cannot be greater than {nameof(desiredMaximumStateOfCharge)} ({desiredMaximumStateOfCharge}).");
+                $"{nameof(desiredMinimumLevel)} ({desiredMinimumLevel}) cannot be greater than {nameof(desiredMaximumLevel)} ({desiredMaximumLevel}).");
         }
 
-        if (desiredMinimumStateOfCharge < Energy.Zero)
+        if (desiredMinimumLevel < Ratio.Zero)
         {
-            throw new ArgumentOutOfRangeException(nameof(desiredMinimumStateOfCharge), desiredMinimumStateOfCharge,
+            throw new ArgumentOutOfRangeException(nameof(desiredMinimumLevel), desiredMinimumLevel,
                 "cannot be below zero");
         }
-        this.desiredMinimumStateOfCharge = desiredMinimumStateOfCharge;
 
-        if (desiredMaximumStateOfCharge > battery.TotalCapacity)
+        if (desiredMaximumLevel > Ratio.FromPercent(100))
         {
-            throw new ArgumentOutOfRangeException(nameof(desiredMaximumStateOfCharge), desiredMaximumStateOfCharge,
-                $"cannot be greater than the battery capacity ({battery.TotalCapacity})");
+            throw new ArgumentOutOfRangeException(nameof(desiredMaximumLevel), desiredMaximumLevel,
+                $"cannot be greater than 100%");
         }
-        this.desiredMaximumStateOfCharge = desiredMaximumStateOfCharge;
+
+        this.desiredMinimumLevel = desiredMinimumLevel;
+        this.desiredMaximumLevel = desiredMaximumLevel;
+        this.desiredMinimumStateOfCharge = battery.TotalCapacity * desiredMinimumLevel.DecimalFractions;
+        this.desiredMaximumStateOfCharge = battery.TotalCapacity * desiredMaximumLevel.DecimalFractions;
     }
     public ControlDecision DoControl(TimeSpan timeStep, IEnumerable<ILoad> loads, IEnumerable<IGenerator> generators, TransferResult lastTransferResult)
     {
@@ -63,5 +69,7 @@ public class AimForSpecificBatteryRange : CapacityRespectingStrategy, IEpDeviceC
 
     public string Name => nameof(AimForSpecificBatteryRange);
 
-    public string Configuration => $"[{desiredMinimumStateOfCharge},{desiredMaximumStateOfCharge}]";
+    public string Configuration => $"[{this.desiredMinimumLevel.DecimalFractions:F2}, {this.desiredMaximumLevel.DecimalFractions:F2}]";
+
+    public string PrettyConfiguration => $"[{desiredMinimumStateOfCharge},{desiredMaximumStateOfCharge}]";
 }

@@ -1,12 +1,15 @@
 ﻿using System.Security.Cryptography;
 using EpDeviceManagement.Contracts;
+using EpDeviceManagement.Control.Strategy.Base;
 using Stateless;
 using UnitsNet;
 
 namespace EpDeviceManagement.Control.Strategy;
 
-public class ProbabilisticModelingControl : CapacityRespectingStrategy, IEpDeviceController
+public class ProbabilisticModelingControl : PowerRespectingStrategy, IEpDeviceController
 {
+    private readonly Ratio probabilisticModeLowerLevel;
+    private readonly Ratio probabilisticModeUpperLevel;
     private readonly Energy probabilisticModeUpperLimit;
     private readonly Energy probabilisticModeLowerLimit;
     private readonly StateMachine<State, Event> stateMachine;
@@ -18,26 +21,42 @@ public class ProbabilisticModelingControl : CapacityRespectingStrategy, IEpDevic
     public ProbabilisticModelingControl(
         IStorage battery,
         Energy packetSize,
-        Energy probabilisticModeUpperLimit,
-        Energy probabilisticModeLowerLimit,
+        Ratio probabilisticModeLowerLevel,
+        Ratio probabilisticModeUpperLevel,
         RandomNumberGenerator random)
         : base(
             battery,
             packetSize)
     {
-        this.probabilisticModeUpperLimit = probabilisticModeUpperLimit;
-        this.probabilisticModeLowerLimit = probabilisticModeLowerLimit;
         this.random = random;
 
         p1probability = Ratio.FromPercent(70);
         p2probability = Ratio.FromPercent(50);
         p3probability = Ratio.FromPercent(30);
 
-        if (probabilisticModeUpperLimit < probabilisticModeLowerLimit)
+        if (probabilisticModeUpperLevel < probabilisticModeLowerLevel)
         {
             throw new ArgumentException(
-                $"{nameof(probabilisticModeUpperLimit)} cannot be lower than {nameof(probabilisticModeLowerLimit)}");
+                $"{nameof(probabilisticModeUpperLevel)} cannot be lower than {nameof(probabilisticModeLowerLevel)}");
         }
+        
+
+        if (probabilisticModeLowerLevel < Ratio.Zero)
+        {
+            throw new ArgumentOutOfRangeException(nameof(probabilisticModeLowerLevel), probabilisticModeLowerLevel,
+                "cannot be below zero");
+        }
+
+        if (probabilisticModeUpperLevel > Ratio.FromPercent(100))
+        {
+            throw new ArgumentOutOfRangeException(nameof(probabilisticModeUpperLevel), probabilisticModeUpperLevel,
+                $"cannot be greater than 100%");
+        }
+
+        this.probabilisticModeLowerLevel = probabilisticModeLowerLevel;
+        this.probabilisticModeUpperLevel = probabilisticModeUpperLevel;
+        this.probabilisticModeLowerLimit = battery.TotalCapacity * probabilisticModeLowerLevel.DecimalFractions;
+        this.probabilisticModeUpperLimit = battery.TotalCapacity * probabilisticModeUpperLevel.DecimalFractions;
 
         State initialState = State.P2;
         if (battery.CurrentStateOfCharge > probabilisticModeUpperLimit)
@@ -212,7 +231,10 @@ public class ProbabilisticModelingControl : CapacityRespectingStrategy, IEpDevic
 
     public string Name => nameof(ProbabilisticModelingControl);
 
-    public string Configuration => $"[{probabilisticModeLowerLimit}, {probabilisticModeUpperLimit}]";
+    public string Configuration =>
+        $"[{this.probabilisticModeLowerLevel.DecimalFractions:F2}, {this.probabilisticModeUpperLevel.DecimalFractions:F2}]";
+
+    public string PrettyConfiguration => $"[{probabilisticModeLowerLimit}, {probabilisticModeUpperLimit}]";
 
     public enum State
     {

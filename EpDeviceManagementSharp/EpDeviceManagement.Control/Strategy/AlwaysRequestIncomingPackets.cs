@@ -1,9 +1,10 @@
 ﻿using EpDeviceManagement.Contracts;
+using EpDeviceManagement.Control.Strategy.Base;
 using UnitsNet;
 
 namespace EpDeviceManagement.Control.Strategy;
 
-public class AlwaysRequestIncomingPackets : CapacityRespectingStrategy, IEpDeviceController
+public class AlwaysRequestIncomingPackets : PowerRespectingStrategy, IEpDeviceController
 {
     public AlwaysRequestIncomingPackets(
         IStorage battery,
@@ -32,4 +33,6 @@ public class AlwaysRequestIncomingPackets : CapacityRespectingStrategy, IEpDevic
     public string Name => nameof(AlwaysRequestIncomingPackets);
 
     public string Configuration => string.Empty;
+
+    public string PrettyConfiguration => string.Empty;
 }

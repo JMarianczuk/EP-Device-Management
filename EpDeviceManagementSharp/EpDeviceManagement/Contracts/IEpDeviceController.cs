@@ -9,6 +9,8 @@ public interface IEpDeviceController
 
     string Configuration { get; }
 
+    string PrettyConfiguration { get; }
+
     /*
      * Either needs to be a list of decisions,
      * or the controller makes the decisions itself

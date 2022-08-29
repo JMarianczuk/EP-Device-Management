@@ -12,4 +12,6 @@ public class NoExchangeWithTheCell : IEpDeviceController
     public string Name => nameof(NoExchangeWithTheCell);
 
     public string Configuration => string.Empty;
+
+    public string PrettyConfiguration => string.Empty;
 }

@@ -7,8 +7,6 @@ public class UncontrollableGeneration : IGenerator
 {
     public Power CurrentGeneration { get; set; }
 
-    public Energy LastStatus { get; set; }
-
     public override string ToString()
     {
         return $"Gen: {this.CurrentGeneration}";

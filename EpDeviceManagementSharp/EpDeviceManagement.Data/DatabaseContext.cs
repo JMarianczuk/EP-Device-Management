@@ -12,7 +12,8 @@ public class ReadDataFromCsv
 {
     public (IAsyncEnumerable<EnergyDataSet>, IDisposable) ReadAsync()
     {
-        var reader = new StreamReader("household_data_15min_singleindex.csv");
+        var fileName = "household_data_15min_singleindex.csv";
+        var reader = new StreamReader(fileName);
         var csvReader = new CsvReader(reader, new CsvConfiguration(CultureInfo.InvariantCulture)
         {
             MissingFieldFound = null,
@@ -20,14 +21,6 @@ public class ReadDataFromCsv
 
         var records = csvReader.GetRecordsAsync<EnergyDataSet>();
         return (records, new DisposableCollection(new IDisposable[] {reader, csvReader}));
-
-        //IList<EnergyDataSet> result = new List<EnergyDataSet>();
-        //await foreach (var dataSet in records)
-        //{
-        //    result.Add(dataSet);
-        //}
-
-        //return result;
     }
 
     private class DisposableCollection : IDisposable

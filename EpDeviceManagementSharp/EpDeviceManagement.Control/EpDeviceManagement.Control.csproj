@@ -14,4 +14,10 @@
       <ProjectReference Include="..\EpDeviceManagement\EpDeviceManagement.csproj" />
     </ItemGroup>
 
+    <ItemGroup>
+      <Reference Include="Cureos.Numerics">
+        <HintPath>..\..\csipopt\Cureos.Numerics\Cureos.Numerics\bin\Release\Cureos.Numerics.dll</HintPath>
+      </Reference>
+    </ItemGroup>
+
 </Project>

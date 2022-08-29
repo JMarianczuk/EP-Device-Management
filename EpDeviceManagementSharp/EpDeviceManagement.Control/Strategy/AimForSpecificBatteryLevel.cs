@@ -1,30 +1,33 @@
 using EpDeviceManagement.Contracts;
+using EpDeviceManagement.Control.Strategy.Base;
 using UnitsNet;
 
 namespace EpDeviceManagement.Control.Strategy;
 
-public class AimForSpecificBatteryLevel : CapacityRespectingStrategy, IEpDeviceController
+public class AimForSpecificBatteryLevel : PowerRespectingStrategy, IEpDeviceController
 {
+    private readonly Ratio desiredLevel;
     private readonly Energy desiredStateOfCharge;
 
     public AimForSpecificBatteryLevel(
         IStorage battery,
         Energy packetSize,
-        Energy desiredStateOfCharge)
+        Ratio desiredLevel)
         : base(battery, packetSize)
     {
-
-        if (desiredStateOfCharge < Energy.Zero)
+        if (desiredLevel < Ratio.Zero)
         {
-            throw new ArgumentOutOfRangeException(nameof(desiredStateOfCharge), desiredStateOfCharge,
+            throw new ArgumentOutOfRangeException(nameof(desiredLevel), desiredLevel,
                 "cannot be below zero");
         }
-        if (desiredStateOfCharge > battery.TotalCapacity)
+        if (desiredLevel > Ratio.FromPercent(100))
         {
-            throw new ArgumentOutOfRangeException(nameof(desiredStateOfCharge), desiredStateOfCharge,
-                $"cannot be greater than the battery capacity ({battery.TotalCapacity})");
+            throw new ArgumentOutOfRangeException(nameof(desiredLevel), desiredLevel,
+                $"cannot be greater than 100%");
         }
-        this.desiredStateOfCharge = desiredStateOfCharge;
+
+        this.desiredLevel = desiredLevel;
+        this.desiredStateOfCharge = battery.TotalCapacity * desiredLevel.DecimalFractions;
     }
 
     public ControlDecision DoControl(TimeSpan timeStep, IEnumerable<ILoad> loads, IEnumerable<IGenerator> generators, TransferResult lastTransferResult)
@@ -54,5 +57,7 @@ public class AimForSpecificBatteryLevel : CapacityRespectingStrategy, IEpDeviceC
 
     public string Name => nameof(AimForSpecificBatteryLevel);
 
-    public string Configuration => desiredStateOfCharge.ToString();
+    public string Configuration => this.desiredLevel.DecimalFractions.ToString("F2");
+
+    public string PrettyConfiguration => desiredStateOfCharge.ToString();
 }

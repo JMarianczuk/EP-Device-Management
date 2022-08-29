@@ -14,11 +14,15 @@ public readonly struct Configuration
     public RandomNumberGenerator Random { get; init; }
 }
 
-public readonly struct DataSet
+public class DataSet
 {
-    public IEnumerable<EnhancedEnergyDataSet> Data { get; init; }
+    public IReadOnlyCollection<EnhancedEnergyDataSet> Data { get; init; }
 
     public string Configuration { get; init; }
+
+    public Func<EnhancedEnergyDataSet, Power> GetLoadsTotalPower { get; init; }
+
+    public Func<EnhancedEnergyDataSet, Power> GetGeneratorsTotalPower { get; init; }
 }
 
 public readonly struct BatteryConfiguration
@@ -42,11 +46,13 @@ public class SimulationResult
 
     public bool Success { get; set; }
 
-    public BatteryOutOfBoundsReason FailReason { get; set; }
+    public BatteryFailReason FailReason { get; set; }
 
     public string StrategyName { get; set; }
 
     public string StrategyConfiguration { get; set; }
+
+    public string StrategyPrettyConfiguration { get; set; }
 
     public string DataConfiguration { get; set; }
 
@@ -57,11 +63,15 @@ public class SimulationResult
     public Energy BatteryMaxSoC { get; set; }
 
     public Energy BatteryAvgSoC { get; set; }
+
+    public int TotalPacketsTransferred { get; set; }
 }
 
-public enum BatteryOutOfBoundsReason
+public enum BatteryFailReason
 {
     None,
     BelowZero,
     ExceedCapacity,
+    ExceedDischargePower,
+    ExceedChargePower
 }

@@ -20,3 +20,11 @@ public static class Units
             : right;
     }
 }
+
+public static class UnitsExtensions
+{
+    public static Frequency DivideBy(this Power power, Energy energy)
+    {
+        return Frequency.FromCyclesPerHour(power.Kilowatts / energy.KilowattHours);
+    }
+}

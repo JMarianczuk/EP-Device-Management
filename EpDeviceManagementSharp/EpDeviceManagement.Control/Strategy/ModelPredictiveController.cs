@@ -1,3 +1,4 @@
+using Cureos.Numerics;
 using EpDeviceManagement.Contracts;
 using UnitsNet;
 
@@ -67,7 +68,121 @@ public class ModelPredictiveController : IEpDeviceController
         throw new NotImplementedException();
     }
 
+    //public static void IpOptSample()
+    //{
+    //    var variables = new double[2];
+    //    var lowerBounds = new double[variables.Length];
+    //    var upperBounds = new double[variables.Length];
+    //    var constraintDefinitions = new double[2];
+    //    var constraintLowerBounds = new double[constraintDefinitions.Length];
+    //    var constraintUpperBounds = new double[constraintDefinitions.Length];
+    //    int nonZeroInConstraintJacobian = 0;
+    //    int nonZeroInHessianOfLagrangian = 0;
+    //    Eval_F_CB objectiveFunction = ObjectiveFunction;
+    //    Eval_G_CB constraintFunction = ConstraintFunction;
+    //    Eval_Grad_F_CB objectiveFunctionGradient = ObjectiveFunctionGradient;
+    //    Eval_Jac_G_CB constraintFunctionJacobian = ConstraintFunctionJacobian;
+    //    Eval_H_CB hessianOfLagrangian = HessianOfLagrangian;
+    //    var ipopt = IpoptAdapter.CreateIpoptProblem(
+    //        variables.Length,
+    //        lowerBounds,
+    //        upperBounds,
+    //        constraintDefinitions.Length,
+    //        constraintLowerBounds,
+    //        constraintUpperBounds,
+    //        nonZeroInConstraintJacobian,
+    //        nonZeroInHessianOfLagrangian,
+    //        IpoptIndexStyle.C,
+    //        objectiveFunction,
+    //        constraintFunction,
+    //        objectiveFunctionGradient,
+    //        constraintFunctionJacobian,
+    //        hessianOfLagrangian
+    //    );
+
+    //    var input = new double[variables.Length];
+    //    var constraints = new double[constraintDefinitions.Length];
+    //    double[] constraintMultipliers = null;
+    //    double[] lowerBoundsMultipliers = null;
+    //    double[] upperBoundMultipliers = null;
+    //    var ret = IpoptAdapter.IpoptSolve(
+    //        ipopt,
+    //        input, 
+    //        constraints,
+    //        out var objectiveValue,
+    //        constraintMultipliers,
+    //        lowerBoundsMultipliers,
+    //        upperBoundMultipliers,
+    //        IntPtr.Zero);
+
+    //    IpoptAdapter.FreeIpoptProblem(ipopt);
+    //}
+
+    //private static IpoptBoolType ObjectiveFunction(
+    //    int n,
+    //    double[] x,
+    //    IpoptBoolType new_x,
+    //    out double obj_value,
+    //    IntPtr p_user_data)
+    //{
+    //    throw new NotImplementedException();
+    //}
+
+    //private static IpoptBoolType ConstraintFunction(
+    //    int n,
+    //    double[] x,
+    //    IpoptBoolType new_x,
+    //    int m,
+    //    double[] g,
+    //    IntPtr p_user_data)
+    //{
+    //    throw new NotImplementedException();
+    //}
+
+    //private static IpoptBoolType ObjectiveFunctionGradient(
+    //    int n,
+    //    double[] x,
+    //    IpoptBoolType new_x,
+    //    double[] grad_f,
+    //    IntPtr p_user_data)
+    //{
+    //    throw new NotImplementedException();
+    //}
+
+    //private static IpoptBoolType ConstraintFunctionJacobian(
+    //    int n,
+    //    double[] x,
+    //    IpoptBoolType new_x,
+    //    int m,
+    //    int nele_jac,
+    //    int[] irow,
+    //    int[] jcol,
+    //    double[] values,
+    //    IntPtr p_user_data)
+    //{
+    //    throw new NotImplementedException();
+    //}
+
+    //private static IpoptBoolType HessianOfLagrangian(
+    //    int n,
+    //    double[] x,
+    //    IpoptBoolType new_x,
+    //    double obj_factor,
+    //    int m,
+    //    double[] lambda,
+    //    IpoptBoolType new_lambda,
+    //    int nele_hess,
+    //    int[] irow,
+    //    int[] jcol,
+    //    double[] values,
+    //    IntPtr p_user_data)
+    //{
+    //    throw new NotImplementedException();
+    //}
+
     public string Name => nameof(ModelPredictiveController);
 
     public string Configuration => string.Empty;
+
+    public string PrettyConfiguration => string.Empty;
 }

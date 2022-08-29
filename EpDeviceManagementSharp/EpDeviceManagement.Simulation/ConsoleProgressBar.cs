@@ -56,3 +56,22 @@ public interface IProgressIndicator : IDisposable
     void FinishOne();
     void ProgressComplete();
 }
+
+public class NoProgress : IProgressIndicator
+{
+    public void Dispose()
+    {
+    }
+
+    public void Setup(int total, string progressTitle = null)
+    {
+    }
+
+    public void FinishOne()
+    {
+    }
+
+    public void ProgressComplete()
+    {
+    }
+}

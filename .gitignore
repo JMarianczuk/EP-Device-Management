@@ -4,7 +4,8 @@
 
 enhanced.json
 *.sqlite
-
+result/results*.txt
+result/*.pdf
 
 .idea
 .vs
