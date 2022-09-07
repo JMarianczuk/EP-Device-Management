@@ -1,4 +1,5 @@
-﻿using System.Security.Cryptography;
+﻿using System.Globalization;
+using System.Security.Cryptography;
 using EpDeviceManagement.Contracts;
 using EpDeviceManagement.Control.Strategy.Base;
 using EpDeviceManagement.Control.Strategy.Guards;
@@ -227,8 +228,8 @@ public class ProbabilisticModelingControl : GuardedStrategy, IEpDeviceController
 
     public override string Name => nameof(ProbabilisticModelingControl);
 
-    public override string Configuration =>
-        $"[{this.probabilisticModeLowerLevel.DecimalFractions:F2}, {this.probabilisticModeUpperLevel.DecimalFractions:F2}]";
+    public override string Configuration => string.Create(CultureInfo.InvariantCulture,
+        $"[{this.probabilisticModeLowerLevel.DecimalFractions:F2}, {this.probabilisticModeUpperLevel.DecimalFractions:F2}]");
 
     public override string PrettyConfiguration => $"[{probabilisticModeLowerLimit}, {probabilisticModeUpperLimit}]";
 

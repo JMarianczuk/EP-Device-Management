@@ -1,4 +1,5 @@
-﻿using EpDeviceManagement.Contracts;
+﻿using System.Globalization;
+using EpDeviceManagement.Contracts;
 using EpDeviceManagement.Control.Strategy.Base;
 using EpDeviceManagement.Control.Strategy.Guards;
 using UnitsNet;
@@ -78,7 +79,7 @@ public class AimForSpecificBatteryRange : GuardedStrategy, IEpDeviceController
 
     public override string Name => nameof(AimForSpecificBatteryRange);
 
-    public override string Configuration => $"[{this.desiredMinimumLevel.DecimalFractions:F2}, {this.desiredMaximumLevel.DecimalFractions:F2}]";
+    public override string Configuration => string.Create(CultureInfo.InvariantCulture, $"[{this.desiredMinimumLevel.DecimalFractions:F2}, {this.desiredMaximumLevel.DecimalFractions:F2}]");
 
     public override string PrettyConfiguration => $"[{desiredMinimumStateOfCharge},{desiredMaximumStateOfCharge}]";
 }

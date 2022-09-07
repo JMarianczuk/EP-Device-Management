@@ -113,7 +113,7 @@ namespace EpDeviceManagement.Simulation
                         {
                             await Task.Delay(TimeSpan.FromSeconds(5), token);
                         }
-                        catch (TaskCanceledException e)
+                        catch (TaskCanceledException)
                         {
                         }
                     }
@@ -159,7 +159,7 @@ namespace EpDeviceManagement.Simulation
             await writeTask;
 
             var elapsed = DateTime.Now - beforeSimulation;
-            Console.WriteLine($"simulating took {elapsed.Humanize()} ({elapsed})");
+            Console.WriteLine($"simulating took {elapsed.Humanize(precision: 2)} ({elapsed})");
         }
 
         private SimulationResult SimulateSingle(

@@ -1,3 +1,4 @@
+using System.Globalization;
 using EpDeviceManagement.Contracts;
 using EpDeviceManagement.Control.Strategy.Base;
 using EpDeviceManagement.Control.Strategy.Guards;
@@ -67,7 +68,7 @@ public class AimForSpecificBatteryLevel : GuardedStrategy, IEpDeviceController
 
     public override string Name => nameof(AimForSpecificBatteryLevel);
 
-    public override string Configuration => this.desiredLevel.DecimalFractions.ToString("F2");
+    public override string Configuration => this.desiredLevel.DecimalFractions.ToString("F2", CultureInfo.InvariantCulture);
 
     public override string PrettyConfiguration => desiredStateOfCharge.ToString();
 }

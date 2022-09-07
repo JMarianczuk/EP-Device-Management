@@ -127,39 +127,23 @@ public class TestData
             config => new AlwaysRequestOutgoingPackets(config.Battery, config.PacketSize),
             config => new NoExchangeWithTheCell(),
         };
-        var upperLimits = MoreEnumerable
-            .Generate(0.5d, x => x + 0.1d)
-            .TakeWhile(x => x <= 0.9d)
-            .Select(x => Ratio.FromDecimalFractions(x))
-            .ToList();
-        var lowerLimits = MoreEnumerable
-            .Generate(0.5d, x => x - 0.1d)
-            .TakeWhile(x => x >= 0.1d)
-            .Select(x => Ratio.FromDecimalFractions(x))
-            .ToList();
-        foreach (var (upper, lower) in upperLimits.Cartesian(lowerLimits, ValueTuple.Create))
+
+        for (double left = 0.1d; left <= 0.9d; left += 0.1d)
         {
-            if (upper != lower)
+            for (double right = left; right <= 0.9d; right += 0.1d)
             {
+                var (lower, upper) = (Ratio.FromDecimalFractions(left), Ratio.FromDecimalFractions(right));
+                strategies.Add(config => new AimForSpecificBatteryRange(
+                    config.Battery,
+                    config.PacketSize,
+                    lower,
+                    upper));
                 strategies.Add(config => new ProbabilisticModelingControl(
                     config.Battery,
                     config.PacketSize,
                     lower,
                     upper,
                     config.Random));
-            }
-        }
-        
-        for (double lower = 0.1d; lower <= 0.9d; lower += 0.1d)
-        {
-            for (double upper = lower; upper <= 0.9d; upper += 0.1d)
-            {
-                var (min, max) = (Ratio.FromDecimalFractions(lower), Ratio.FromDecimalFractions(upper));
-                strategies.Add(config => new AimForSpecificBatteryRange(
-                    config.Battery,
-                    config.PacketSize,
-                    min,
-                    max));
             }
         }
 
@@ -198,7 +182,12 @@ public class TestData
         const int lineCountOf15MinData = 153811;
         progress.Setup(lineCountOf15MinData, "reading the data");
         enhancedData = await EnhanceAsync(data, timeStep, progress);
+        var oneYearOfTimeSteps = (int) (TimeSpan.FromDays(365) / timeStep);
+
+        // Data set spans five years, reduce to one
+        enhancedData = enhancedData.Skip(oneYearOfTimeSteps).Take(oneYearOfTimeSteps).ToList();
         handle.Dispose();
+
         var dataSets = new List<DataSet>()
         {
             new DataSet()
@@ -221,7 +210,21 @@ public class TestData
                 Data = enhancedData,
                 GetLoadsTotalPower = d => d.Residential2_Load,
                 GetGeneratorsTotalPower = _ => Power.Zero,
-            }
+            },
+            new DataSet()
+            {
+                Configuration = "Res4",
+                Data = enhancedData,
+                GetLoadsTotalPower = d => d.Residential4_Load + d.Residential4_ControllableLoad,
+                GetGeneratorsTotalPower = d => d.Residential4_Generation,
+            },
+            new DataSet()
+            {
+                Configuration = "Res4 noSolar",
+                Data = enhancedData,
+                GetLoadsTotalPower = d => d.Residential4_Load + d.Residential4_ControllableLoad,
+                GetGeneratorsTotalPower = _ => Power.Zero,
+            },
         };
 
         return dataSets;
@@ -244,44 +247,58 @@ public class TestData
         var freeze_last2 = Energy.Zero;
         var dish_last2 = Energy.Zero;
         var wash_last2 = Energy.Zero;
+
+        var dish_last4 = Energy.Zero;
+        var ev_last4 = Energy.Zero;
+        var freeze_last4 = Energy.Zero;
+        var heat_last4 = Energy.Zero;
+        var pv_last4 = Energy.Zero;
+        var fridge_last4 = Energy.Zero;
+        var wash_last4 = Energy.Zero;
+
+        Power GetPower(double? now, ref Energy last)
+        {
+            var now_energy = Energy.FromKilowattHours(now ?? last.KilowattHours);
+            var result = (now_energy - last) / timeStep;
+            last = now_energy;
+            return result;
+        }
         await foreach (var entry in data)
         {
-            var dish = Energy.FromKilowattHours(entry.DE_KN_residential1_dishwasher ?? dish_last.KilowattHours);
-            var freeze = Energy.FromKilowattHours(entry.DE_KN_residential1_freezer ?? freeze_last.KilowattHours);
-            var heat = Energy.FromKilowattHours(entry.DE_KN_residential1_heat_pump ?? heat_last.KilowattHours);
-            var wash = Energy.FromKilowattHours(entry.DE_KN_residential1_washing_machine ?? wash_last.KilowattHours);
-            var pv = Energy.FromKilowattHours(entry.DE_KN_residential1_pv ?? pv_last.KilowattHours);
+            var dish = GetPower(entry.DE_KN_residential1_dishwasher, ref dish_last);
+            var freeze = GetPower(entry.DE_KN_residential1_freezer, ref freeze_last);
+            var heat = GetPower(entry.DE_KN_residential1_heat_pump, ref heat_last);
+            var wash = GetPower(entry.DE_KN_residential1_washing_machine, ref wash_last);
+            var pv = GetPower(entry.DE_KN_residential1_pv, ref pv_last);
 
-            var circulation2 = Energy.FromKilowattHours(entry.DE_KN_residential2_circulation_pump ?? circulation_last2.KilowattHours);
-            var freeze2 = Energy.FromKilowattHours(entry.DE_KN_residential2_freezer ?? freeze_last2.KilowattHours);
-            var dish2 = Energy.FromKilowattHours(entry.DE_KN_residential2_dishwasher ?? dish_last2.KilowattHours);
-            var wash2 = Energy.FromKilowattHours(entry.DE_KN_residential2_washing_machine ?? wash_last2.KilowattHours);
+            var circulation2 = GetPower(entry.DE_KN_residential2_circulation_pump, ref circulation_last2);
+            var freeze2 = GetPower(entry.DE_KN_residential2_freezer, ref freeze_last2);
+            var dish2 = GetPower(entry.DE_KN_residential2_dishwasher, ref dish_last2);
+            var wash2 = GetPower(entry.DE_KN_residential2_washing_machine, ref wash_last2);
 
-            var l1 = (dish - dish_last) / timeStep;
-            l1 += (freeze - freeze_last) / timeStep;
-            l1 += (heat - heat_last) / timeStep;
-            l1 += (wash - wash_last) / timeStep;
-            var l2 = (circulation2 - circulation_last2) / timeStep;
-            l2 += (freeze2 - freeze_last2) / timeStep;
-            l2 += (dish2 - dish_last2) / timeStep;
-            l2 += (wash2 - wash_last2) / timeStep;
+            var dish4 = GetPower(entry.DE_KN_residential4_dishwasher, ref dish_last4);
+            var ev4 = GetPower(entry.DE_KN_residential4_ev, ref ev_last4);
+            var freeze4 = GetPower(entry.DE_KN_residential4_freezer, ref freeze_last4);
+            var heat4 = GetPower(entry.DE_KN_residential4_heat_pump, ref heat_last4);
+            var pv4 = GetPower(entry.DE_KN_residential4_pv, ref pv_last4);
+            var fridge4 = GetPower(entry.DE_KN_residential4_refrigerator, ref fridge_last4);
+            var wash4 = GetPower(entry.DE_KN_residential4_washing_machine, ref wash_last4);
+
+            var l1 = dish + freeze + heat + wash;
+
+            var l2 = circulation2 + freeze2 + dish2 + wash2;
+
+            var l4 = dish4 + freeze4 + heat4 + fridge4 + wash4;
             result.Add(new EnhancedEnergyDataSet()
             {
                 Timestamp = entry.cet_cest_timestamp,
                 Residential1_Load = l1,
-                Residential1_Generation = (pv - pv_last) / timeStep,
+                Residential1_Generation = pv,
                 Residential2_Load = l2,
+                Residential4_Load = l4,
+                Residential4_ControllableLoad = ev4,
+                Residential4_Generation = pv,
             });
-            dish_last = dish;
-            freeze_last = freeze;
-            heat_last = heat;
-            wash_last = wash;
-            pv_last = pv;
-
-            circulation_last2 = circulation2;
-            freeze_last2 = freeze2;
-            dish_last2 = dish2;
-            wash_last2 = wash2;
 
             progress.FinishOne();
         }

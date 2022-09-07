@@ -17,7 +17,7 @@ get_query <- function(data_name, strat_name, timestep_name) {
     query <- paste(
         "select",
         "*",
-        "from simulation",
+        "from simulation_with_counts",
         where)
     query
 }
@@ -27,9 +27,10 @@ do_plot <- function(data_name, strat_name, timestep_name, title, file_name) {
 
     thisplot <- ggplot(res, aes(
         x = packets,
-        y = configuration
+        y = reorder(paste(configuration, "x", count), count)
     )) +
-    geom_boxplot()
+    geom_boxplot() +
+    labs(title = "Required packet transfers for each configuration with descending number of successful control passes over all packet sizes and probabilities", x = "Number of exchanged packets", y = "Configuration x Successful passes")
 
     ggsave(file_name, thisplot, width = 30, height = 25, units = "cm")
 }

@@ -30,9 +30,15 @@ public class EnhancedEnergyDataSet
 
     public Power Residential2_Load { get; init; }
 
+    public Power Residential4_Load { get; init; }
+
+    public Power Residential4_ControllableLoad { get; init; }
+
+    public Power Residential4_Generation { get; init; }
+
     public override string ToString()
     {
-        return $"Res1 -{Residential1_Load}, +{Residential1_Generation}, Res2 -{Residential2_Load}";
+        return $"Res1 -{Residential1_Load}, +{Residential1_Generation}, Res2 -{Residential2_Load}, Res4 -{Residential4_Load + Residential4_ControllableLoad} +{Residential4_Generation}";
         //return $"Dish {Residential1_Dishwasher}, Freezer {Residential1_Freezer}, HeatPump {Residential1_HeatPump}, Wash {Residential1_WashingMachine}, PV {Residential1_PV}";
     }
 }
