@@ -4,6 +4,11 @@
 <#@ import namespace="System.Text" #>
 <#@ import namespace="System.Collections.Generic" #>
 <#@ output extension=".generated.cs" #>
+<#
+	var header = System.IO.File.ReadLines("EpDeviceManagement.Data\\household_data_15min_singleindex.csv").First();
+	var columns = header.Split(',');
+	const string Prefix = "DE_KN_";
+#>
 using System.Globalization;
 using CsvHelper;
 using CsvHelper.Configuration;
@@ -16,8 +21,6 @@ namespace EpDeviceManagement.Data;
 public class EnergyDataSet
 {
 <# 
-	var header = System.IO.File.ReadLines("EpDeviceManagement.Data\\household_data_15min_singleindex.csv").First();
-	var columns = header.Split(',');
 	foreach (var c in columns)
 	{
 		if (c.Contains("timestamp"))
@@ -31,6 +34,28 @@ public class EnergyDataSet
 		else
 		{
 			WriteLine("    public double? " + c + " { get; set; }");
+		}
+		WriteLine("");
+	}
+#>
+}
+
+public class PowerDataSet
+{
+<#
+	foreach (var c in columns)
+	{
+		if (c.Contains("timestamp"))
+		{
+			WriteLine("    public DateTimeOffset " + c + " { get; set; }");
+		}
+		else if (c.Contains("interpolated"))
+		{
+			WriteLine("    public string " + c + " { get;set; }");
+		}
+		else
+		{
+			WriteLine("    public double " + c + " { get; set; }");
 		}
 		WriteLine("");
 	}

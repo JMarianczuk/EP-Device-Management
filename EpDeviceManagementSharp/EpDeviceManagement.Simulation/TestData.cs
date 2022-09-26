@@ -1,6 +1,8 @@
 ﻿using EpDeviceManagement.Contracts;
+using EpDeviceManagement.Control.Contracts;
 using EpDeviceManagement.Control.Strategy;
 using EpDeviceManagement.Data;
+using EpDeviceManagement.Prediction;
 using EpDeviceManagement.Simulation.Storage;
 using UnitsNet;
 
@@ -53,69 +55,111 @@ public class TestData
             //        };
             //    },
             //},
+
+            //new BatteryConfiguration()
+            //{
+            //    Description = "RCT Power Battery 11.5", // G2
+            //    CreateBattery = () =>
+            //    {
+            //        //var nominalVoltage = ElectricPotential.FromVolts(461);
+            //        //var chargeCurrent = ElectricCurrent.FromAmperes(25);
+            //        //var dischargeCurrent = ElectricCurrent.FromAmperes(25);
+            //        var averageRoundtripEfficiency = Ratio.FromPercent(95.6);
+            //        var averageRoundtripLoss = Ratio.FromPercent(100) - averageRoundtripEfficiency;
+            //        var capacity = Energy.FromKilowattHours(10.37);
+            //        return new BatteryElectricStorage(
+            //            Power.FromWatts(10.5).DivideBy(capacity),
+            //            Ratio.FromPercent(100) - averageRoundtripLoss / 2,
+            //            Ratio.FromPercent(100) + averageRoundtripLoss / 2)
+            //        {
+            //            TotalCapacity = capacity,
+            //            CurrentStateOfCharge = capacity / 2,
+            //            MaximumChargePower = Power.FromKilowatts(10.5),
+            //            MaximumDischargePower = Power.FromKilowatts(10.5),
+            //        };
+            //    },
+            //},
+            //new BatteryConfiguration()
+            //{
+            //    Description = "Fenecon Home", // I1
+            //    CreateBattery = () =>
+            //    {
+            //        var averageRoundtripEfficiency = Ratio.FromPercent(95.5);
+            //        var averageRoundtripLoss = Ratio.FromPercent(100) - averageRoundtripEfficiency;
+            //        var capacity = Energy.FromKilowattHours(16.1);
+            //        return new BatteryElectricStorage(
+            //            Power.FromWatts(20.5).DivideBy(capacity),
+            //            Ratio.FromPercent(100) - averageRoundtripLoss / 2,
+            //            Ratio.FromPercent(100) + averageRoundtripLoss / 2)
+            //        {
+            //            TotalCapacity = capacity,
+            //            CurrentStateOfCharge = capacity / 2,
+            //            MaximumChargePower = Power.FromKilowatts(7.84),
+            //            MaximumDischargePower = Power.FromKilowatts(7.84),
+            //        };
+            //    },
+            //},
+            //new BatteryConfiguration()
+            //{
+            //    Description = "Solax T-Bat H 23", // L1
+            //    CreateBattery = () =>
+            //    {
+            //        var averageRoundtripEfficiency = Ratio.FromPercent(94.7);
+            //        var averageRoundtripLoss = Ratio.FromPercent(100) - averageRoundtripEfficiency;
+            //        var capacity = Energy.FromKilowattHours(20.6);
+            //        return new BatteryElectricStorage(
+            //            Power.FromWatts(37).DivideBy(capacity),
+            //            Ratio.FromPercent(100) - averageRoundtripLoss / 2,
+            //            Ratio.FromPercent(100) + averageRoundtripLoss / 2)
+            //        {
+            //            TotalCapacity = capacity,
+            //            CurrentStateOfCharge = capacity / 2,
+            //            MaximumChargePower = Power.FromKilowatts(13.8),
+            //            MaximumDischargePower = Power.FromKilowatts(13.8),
+            //        };
+            //    },
+            //},
+
             new BatteryConfiguration()
             {
-                Description = "RCT Power Battery 11.5", // G2
+                Description = "10 kWh",
                 CreateBattery = () =>
                 {
-                    //var nominalVoltage = ElectricPotential.FromVolts(461);
-                    //var chargeCurrent = ElectricCurrent.FromAmperes(25);
-                    //var dischargeCurrent = ElectricCurrent.FromAmperes(25);
-                    var averageRoundtripEfficiency = Ratio.FromPercent(95.6);
-                    var averageRoundtripLoss = Ratio.FromPercent(100) - averageRoundtripEfficiency;
-                    var capacity = Energy.FromKilowattHours(10.37);
+                    var avgRoundTripEfficiency = Ratio.FromPercent(95);
+                    var avgRoundTripLoss = Ratio.FromPercent(100) - avgRoundTripEfficiency;
+                    var capacity = Energy.FromKilowattHours(10);
                     return new BatteryElectricStorage(
-                        Power.FromWatts(10.5).DivideBy(capacity),
-                        Ratio.FromPercent(100) - averageRoundtripLoss / 2,
-                        Ratio.FromPercent(100) + averageRoundtripLoss / 2)
+                        Power.FromWatts(20).DivideBy(capacity),
+                        Ratio.FromPercent(100) - avgRoundTripLoss / 2,
+                        Ratio.FromPercent(100) + avgRoundTripLoss / 2)
                     {
                         TotalCapacity = capacity,
                         CurrentStateOfCharge = capacity / 2,
-                        MaximumChargePower = Power.FromKilowatts(10.5),
-                        MaximumDischargePower = Power.FromKilowatts(10.5),
+                        MaximumChargePower = Power.FromKilowatts(10),
+                        MaximumDischargePower = Power.FromKilowatts(10),
                     };
-                },
+                }
             },
             new BatteryConfiguration()
             {
-                Description = "Fenecon Home", // I1
+                Description = "15 kWh",
                 CreateBattery = () =>
                 {
-                    var averageRoundtripEfficiency = Ratio.FromPercent(95.5);
-                    var averageRoundtripLoss = Ratio.FromPercent(100) - averageRoundtripEfficiency;
-                    var capacity = Energy.FromKilowattHours(16.1);
+                    var avgRoundTripEfficiency = Ratio.FromPercent(95);
+                    var avgRoundTripLoss = Ratio.FromPercent(100) - avgRoundTripEfficiency;
+                    var capacity = Energy.FromKilowattHours(15);
                     return new BatteryElectricStorage(
-                        Power.FromWatts(20.5).DivideBy(capacity),
-                        Ratio.FromPercent(100) - averageRoundtripLoss / 2,
-                        Ratio.FromPercent(100) + averageRoundtripLoss / 2)
+                        Power.FromWatts(20).DivideBy(capacity),
+                        Ratio.FromPercent(100) - avgRoundTripLoss / 2,
+                        Ratio.FromPercent(100) + avgRoundTripLoss / 2)
                     {
                         TotalCapacity = capacity,
                         CurrentStateOfCharge = capacity / 2,
-                        MaximumChargePower = Power.FromKilowatts(7.84),
-                        MaximumDischargePower = Power.FromKilowatts(7.84),
+                        MaximumChargePower = Power.FromKilowatts(15),
+                        MaximumDischargePower = Power.FromKilowatts(15),
                     };
-                },
-            },
-            new BatteryConfiguration()
-            {
-                Description = "Solax T-Bat H 23", // L1
-                CreateBattery = () =>
-                {
-                    var averageRoundtripEfficiency = Ratio.FromPercent(94.7);
-                    var averageRoundtripLoss = Ratio.FromPercent(100) - averageRoundtripEfficiency;
-                    var capacity = Energy.FromKilowattHours(20.6);
-                    return new BatteryElectricStorage(
-                        Power.FromWatts(37).DivideBy(capacity),
-                        Ratio.FromPercent(100) - averageRoundtripLoss / 2,
-                        Ratio.FromPercent(100) + averageRoundtripLoss / 2)
-                    {
-                        TotalCapacity = capacity,
-                        CurrentStateOfCharge = capacity / 2,
-                        MaximumChargePower = Power.FromKilowatts(13.8),
-                        MaximumDischargePower = Power.FromKilowatts(13.8),
-                    };
-                },
-            },
+                }
+            }
         };
     }
 
@@ -147,18 +191,46 @@ public class TestData
             }
         }
 
+        //foreach (var horizon in Enumerable.Range(1, 8).Select(x => TimeSpan.FromHours(x)))
+        //{
+        //    strategies.Add(config =>
+        //    {
+        //        var loadsPredictor = new LastValuePredictor<Power>();
+        //        var generationPredictor = new LastValuePredictor<Power>();
+        //        var strategy = new SimplePredictiveControl(
+        //            config.Battery,
+        //            config.PacketSize,
+        //            horizon,
+        //            loadsPredictor,
+        //            generationPredictor,
+        //            nameof(LastValuePredictor<Power>));
+        //        return new StreamValuePredictorDependentControl(
+        //            strategy,
+        //            loadsPredictor,
+        //            generationPredictor);
+        //    });
+        //}
+
         return strategies;
+    }
+
+    public static IList<Func<IValuePredictor<Power>>> GetPredictors()
+    {
+        var predictors = new List<Func<IValuePredictor<Power>>>()
+        {
+            () => new LastValuePredictor<Power>()
+        };
+
+        return predictors;
     }
 
     public static IList<Energy> GetPacketSizes()
     {
         return MoreEnumerable
-            .Generate(0d, x => x + 0.1d)
-            .Skip(1)
-            .Take(4)
+            .Generate(0.1d, x => x + 0.1d)
+            .Take(9)
             .Concat(MoreEnumerable
-                .Generate(0d, x => x + 0.5)
-                .Skip(1)
+                .Generate(1d, x => x + 0.5)
                 .Take(10))
             .Select(x => Energy.FromKilowattHours(x))
             .ToList();
@@ -177,16 +249,20 @@ public class TestData
 
     public static async Task<IList<DataSet>> GetDataSetsAsync(TimeSpan timeStep, IProgressIndicator progress)
     {
-        IReadOnlyList<EnhancedEnergyDataSet> enhancedData;
-        var (data, handle) = new ReadDataFromCsv().ReadAsync();
+        //IReadOnlyList<EnhancedEnergyDataSet> enhancedData;
+        IReadOnlyList<EnhancedPowerDataSet> enhancedData;
+        //var (data, handle) = new ReadDataFromCsv().ReadAsync();
         const int lineCountOf15MinData = 153811;
         progress.Setup(lineCountOf15MinData, "reading the data");
-        enhancedData = await EnhanceAsync(data, timeStep, progress);
-        var oneYearOfTimeSteps = (int) (TimeSpan.FromDays(365) / timeStep);
+        //enhancedData = await EnhanceAsync(data, timeStep, progress);
+        var oneYearOfTimeSteps = (int)(TimeSpan.FromDays(365) / timeStep);
 
+        var (data2, handle) = new ReadDataFromCsv().ReadAsync2();
+        enhancedData = await EnhanceAsync2(data2, progress);
         // Data set spans five years, reduce to one
         enhancedData = enhancedData.Skip(oneYearOfTimeSteps).Take(oneYearOfTimeSteps).ToList();
         handle.Dispose();
+        progress.ProgressComplete();
 
         var dataSets = new List<DataSet>()
         {
@@ -297,9 +373,48 @@ public class TestData
                 Residential2_Load = l2,
                 Residential4_Load = l4,
                 Residential4_ControllableLoad = ev4,
-                Residential4_Generation = pv,
+                Residential4_Generation = pv4,
             });
 
+            progress.FinishOne();
+        }
+
+        return result;
+    }
+
+    public static async Task<IReadOnlyList<EnhancedPowerDataSet>> EnhanceAsync2(
+        IAsyncEnumerable<PowerDataSet> data,
+        IProgressIndicator progress)
+    {
+        var result = new List<EnhancedPowerDataSet>();
+        await foreach (var entry in data)
+        {
+            var l1 = Power.FromKilowatts(
+                entry.DE_KN_residential1_dishwasher
+                + entry.DE_KN_residential1_freezer
+                + entry.DE_KN_residential1_heat_pump
+                + entry.DE_KN_residential1_washing_machine);
+            var l2 = Power.FromKilowatts(
+                entry.DE_KN_residential2_circulation_pump
+                + entry.DE_KN_residential2_freezer
+                + entry.DE_KN_residential2_dishwasher
+                + entry.DE_KN_residential2_washing_machine);
+            var l4 = Power.FromKilowatts(
+                entry.DE_KN_residential4_dishwasher
+                + entry.DE_KN_residential4_freezer
+                + entry.DE_KN_residential4_heat_pump
+                + entry.DE_KN_residential4_refrigerator
+                + entry.DE_KN_residential4_washing_machine);
+            result.Add(new EnhancedPowerDataSet()
+            {
+                Timestamp = entry.cet_cest_timestamp,
+                Residential1_Load = l1,
+                Residential1_Generation = Power.FromKilowatts(entry.DE_KN_residential1_pv),
+                Residential2_Load = l2,
+                Residential4_Load = l4,
+                Residential4_ControllableLoad = Power.FromKilowatts(entry.DE_KN_residential4_ev),
+                Residential4_Generation = Power.FromKilowatts(entry.DE_KN_residential4_pv),
+            });
             progress.FinishOne();
         }
 

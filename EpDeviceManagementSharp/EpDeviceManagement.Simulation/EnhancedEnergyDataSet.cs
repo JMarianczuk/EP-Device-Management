@@ -42,3 +42,20 @@ public class EnhancedEnergyDataSet
         //return $"Dish {Residential1_Dishwasher}, Freezer {Residential1_Freezer}, HeatPump {Residential1_HeatPump}, Wash {Residential1_WashingMachine}, PV {Residential1_PV}";
     }
 }
+
+public class EnhancedPowerDataSet
+{
+    public DateTimeOffset Timestamp { get; init; }
+
+    public Power Residential1_Load { get; init; }
+
+    public Power Residential1_Generation { get; init; }
+
+    public Power Residential2_Load { get; init; }
+
+    public Power Residential4_Load { get; init; }
+
+    public Power Residential4_ControllableLoad { get; init; }
+
+    public Power Residential4_Generation { get; init; }
+}

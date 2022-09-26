@@ -118,6 +118,37 @@ public class ProbabilisticModelingControl : GuardedStrategy, IEpDeviceController
         return sm;
     }
 
+    public StateMachine<State, Event> BuildSimplifiedMachine(State initialState)
+    {
+        var sm = new StateMachine<State, Event>(initialState);
+
+        sm.Configure(State.BatteryLow)
+            .Permit(Event.BatteryWithinLimits, State.P1);
+
+        sm.Configure(State.P1)
+            .PermitReentry(Event.TransferAccepted)
+            .Permit(Event.TransferDenied, State.P2)
+            .Permit(Event.BatteryBelowSetpoint, State.BatteryLow)
+            .Permit(Event.BatteryAboveSetpoint, State.BatteryHigh);
+
+        sm.Configure(State.P2)
+            .Permit(Event.TransferAccepted, State.P1)
+            .Permit(Event.TransferDenied, State.P3)
+            .Permit(Event.BatteryBelowSetpoint, State.BatteryLow)
+            .Permit(Event.BatteryAboveSetpoint, State.BatteryHigh);
+
+        sm.Configure(State.P3)
+            .PermitReentry(Event.TransferDenied)
+            .Permit(Event.TransferAccepted, State.P2)
+            .Permit(Event.BatteryBelowSetpoint, State.BatteryLow)
+            .Permit(Event.BatteryAboveSetpoint, State.BatteryHigh);
+
+        sm.Configure(State.BatteryHigh)
+            .Permit(Event.BatteryWithinLimits, State.P3);
+
+        return sm;
+    }
+
     protected override ControlDecision DoUnguardedControl(
         TimeSpan timeStep,
         IEnumerable<ILoad> loads,

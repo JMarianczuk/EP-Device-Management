@@ -1,31 +1,27 @@
 PRAGMA case_sensitive_like=ON;
 
-DROP TABLE IF EXISTS successful_counts;
+DROP TABLE IF EXISTS successful_counts_sc;
 
 CREATE TABLE
-    successful_counts
+    successful_counts_sc
 AS
 SELECT
     strategy,
     configuration,
-	success,
-    data,
-    timeStep,
+    success,
     count(*) as count
 FROM
     simulation
 GROUP BY
     strategy,
     configuration,
-	success,
-    data,
-    timeStep
+    success
 ;
 
-DROP VIEW IF EXISTS simulation_with_counts;
+DROP TABLE IF EXISTS simulation_with_counts_sc;
 
-CREATE VIEW
-    simulation_with_counts
+CREATE TABLE
+    simulation_with_counts_sc
 AS
 SELECT
     s.*,
@@ -33,11 +29,9 @@ SELECT
 FROM
     simulation s
 JOIN
-    successful_counts c
+    successful_counts_sc c
 ON
     s.strategy = c.strategy
     AND s.configuration = c.configuration
     AND s.success = c.success
-    AND s.data = c.data
-    AND s.timeStep = c.timeStep
 ;

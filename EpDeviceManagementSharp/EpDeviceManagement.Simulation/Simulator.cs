@@ -1,8 +1,11 @@
 ﻿using System.Collections;
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.Globalization;
 using EpDeviceManagement.Contracts;
 using EpDeviceManagement.Control;
+using EpDeviceManagement.Control.Contracts;
+using EpDeviceManagement.Prediction;
 using EpDeviceManagement.Simulation.Loads;
 using UnitsNet;
 using Humanizer;
@@ -19,6 +22,7 @@ namespace EpDeviceManagement.Simulation
 
             var batteries = TestData.GetBatteries();
             var strategies = TestData.GetStrategies();
+            var predictors = TestData.GetPredictors();
             var packetSizes = TestData.GetPacketSizes();
             var packetProbabilities = TestData.GetPacketProbabilities();
 
@@ -99,7 +103,7 @@ namespace EpDeviceManagement.Simulation
                                 $"success={entry.Success}",
                                 $"fail={entry.FailReason}",
                                 $"steps={entry.StepsSimulated}",
-                                $"packets={entry.TotalPacketsTransferred}",
+                                string.Create(CultureInfo.InvariantCulture, $"energy_kwh={entry.TotalKilowattHoursTransferred}"),
                                 $"seed={entry.Seed}"));
                             progress.FinishOne();
                         }
@@ -174,13 +178,13 @@ namespace EpDeviceManagement.Simulation
             var random = new SeededRandomNumberGenerator(seed);
             TransferResult lastDecision = new TransferResult.NoTransferRequested();
             var battery = batteryConfig.CreateBattery();
-            var strategy = createStrategy(
-                new Configuration()
-                {
-                    Battery = battery,
-                    PacketSize = packetSize,
-                    Random = random,
-                });
+            var strategyConfig = new Configuration()
+            {
+                Battery = battery,
+                PacketSize = packetSize,
+                Random = random,
+            };
+            var strategy = createStrategy(strategyConfig);
 //#if DEBUG
 //            if (strategy is ProbabilisticModelingControl pmc
 //                && pmc.Configuration == "[6.44 kWh, 12.88 kWh]"
@@ -190,6 +194,16 @@ namespace EpDeviceManagement.Simulation
 //                && batteryConfig.Description == "Fenecon Home"
 //                && timeStep == TimeSpan.FromMinutes(3)
 //                )
+//            {
+//                int p = 5;
+//            }
+//            else
+//            {
+//                return new SimulationResult();
+//            }
+//#endif
+//#if DEBUG
+//            if (strategy is SimplePredictiveControl spc)
 //            {
 //                int p = 5;
 //            }
@@ -228,7 +242,7 @@ namespace EpDeviceManagement.Simulation
                 BatteryConfiguration = $"{batteryConfig.Description} [{battery.TotalCapacity}]",
                 Seed = seed,
             };
-            int totalPackets = 0;
+            double totalKwh = 0;
             var batteryMinSoC = battery.CurrentStateOfCharge;
             var batteryMaxSoC = battery.CurrentStateOfCharge;
             var batterySoCSum = battery.CurrentStateOfCharge;
@@ -237,7 +251,7 @@ namespace EpDeviceManagement.Simulation
             void SetResultValues()
             {
                 result.StepsSimulated = step;
-                result.TotalPacketsTransferred = totalPackets;
+                result.TotalKilowattHoursTransferred = totalKwh;
                 result.BatteryMinSoC = batteryMinSoC;
                 result.BatteryMaxSoC = batteryMaxSoC;
                 result.BatteryAvgSoC = batterySoCSum / step;
@@ -273,7 +287,7 @@ namespace EpDeviceManagement.Simulation
                             {
                                 PerformedDirection = rt.RequestedDirection,
                             };
-                            totalPackets += 1;
+                            totalKwh += packetSize.KilowattHours;
                         }
                         else
                         {

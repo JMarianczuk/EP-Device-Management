@@ -1,0 +1,19 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MathNet.Numerics" Version="5.0.0" />
+    <PackageReference Include="R.NET" Version="1.9.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\EpDeviceManagement.Control\EpDeviceManagement.Control.csproj" />
+    <ProjectReference Include="..\EpDeviceManagement.UnitsExtensions\EpDeviceManagement.UnitsExtensions.csproj" />
+  </ItemGroup>
+
+</Project>

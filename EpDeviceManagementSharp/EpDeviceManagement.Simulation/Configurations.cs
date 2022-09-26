@@ -1,28 +1,56 @@
 ﻿using System.Security.Cryptography;
 using EpDeviceManagement.Contracts;
+using EpDeviceManagement.Control.Contracts;
 using EpDeviceManagement.Simulation.Storage;
 using UnitsNet;
 
 namespace EpDeviceManagement.Simulation;
 
-public readonly struct Configuration
+public class Configuration
 {
+    private readonly IValuePredictor<Power> loadsPredictor;
+    private readonly IValuePredictor<Power> generationPredictor;
+
     public IStorage Battery { get; init; }
 
     public Energy PacketSize { get; init; }
 
+    public IValuePredictor<Power> LoadsPredictor
+    {
+        get
+        {
+            this.PredictorUsed = true;
+            return loadsPredictor;
+        }
+        init => loadsPredictor = value;
+    }
+
+    public IValuePredictor<Power> GenerationPredictor
+    {
+        get
+        {
+            this.PredictorUsed = true;
+            return generationPredictor;
+        }
+        init => generationPredictor = value;
+    }
+
     public RandomNumberGenerator Random { get; init; }
+
+    public bool PredictorUsed { get; private set; } = false;
 }
 
 public class DataSet
 {
-    public IReadOnlyCollection<EnhancedEnergyDataSet> Data { get; init; }
+    private static Func<EnhancedPowerDataSet, Power> ZeroPower = _ => Power.Zero;
 
-    public string Configuration { get; init; }
+    public IReadOnlyCollection<EnhancedPowerDataSet> Data { get; init; } = Array.Empty<EnhancedPowerDataSet>();
 
-    public Func<EnhancedEnergyDataSet, Power> GetLoadsTotalPower { get; init; }
+    public string Configuration { get; init; } = string.Empty;
 
-    public Func<EnhancedEnergyDataSet, Power> GetGeneratorsTotalPower { get; init; }
+    public Func<EnhancedPowerDataSet, Power> GetLoadsTotalPower { get; init; } = ZeroPower;
+
+    public Func<EnhancedPowerDataSet, Power> GetGeneratorsTotalPower { get; init; } = ZeroPower;
 }
 
 public readonly struct BatteryConfiguration
@@ -34,7 +62,7 @@ public readonly struct BatteryConfiguration
 
 public class SimulationResult
 {
-    public string BatteryConfiguration { get; set; }
+    public string BatteryConfiguration { get; set; } = string.Empty;
 
     public int StepsSimulated { get; set; }
 
@@ -48,13 +76,13 @@ public class SimulationResult
 
     public BatteryFailReason FailReason { get; set; }
 
-    public string StrategyName { get; set; }
+    public string StrategyName { get; set; } = string.Empty;
 
-    public string StrategyConfiguration { get; set; }
+    public string StrategyConfiguration { get; set; } = string.Empty;
 
-    public string StrategyPrettyConfiguration { get; set; }
+    public string StrategyPrettyConfiguration { get; set; } = string.Empty;
 
-    public string DataConfiguration { get; set; }
+    public string DataConfiguration { get; set; } = string.Empty;
 
     public int Seed { get; set; }
 
@@ -64,7 +92,7 @@ public class SimulationResult
 
     public Energy BatteryAvgSoC { get; set; }
 
-    public int TotalPacketsTransferred { get; set; }
+    public double TotalKilowattHoursTransferred { get; set; }
 }
 
 public enum BatteryFailReason

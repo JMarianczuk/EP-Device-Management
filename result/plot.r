@@ -37,6 +37,7 @@ do_plot <- function(data_name, battery_name, timestep_name, title, file_name) {
         x = reorder(probability, num_value(probability)),
         y = packetSize,
         colour = strategy,
+        shape = strategy,
         size = size)
         ) +
         geom_jitter() +

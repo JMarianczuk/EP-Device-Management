@@ -10,9 +10,16 @@ namespace EpDeviceManagement.Data;
 
 public class ReadDataFromCsv
 {
-    public (IAsyncEnumerable<EnergyDataSet>, IDisposable) ReadAsync()
+    public const string FileName_01 = "household_data_1min_singleindex.csv";
+    public const string FileName_15 = "household_data_15min_singleindex.csv";
+    public const string FileName_60 = "household_data_60min_singleindex.csv";
+    
+    public const string FileName_Power_01 = "household_data_1min_power.csv";
+    public const string FileName_Power_15 = "household_data_15min_power.csv";
+    public const string FileName_Power_60 = "household_data_60min_power.csv";
+
+    public (IAsyncEnumerable<EnergyDataSet>, IDisposable) ReadAsync(string fileName = FileName_15)
     {
-        var fileName = "household_data_15min_singleindex.csv";
         var reader = new StreamReader(fileName);
         var csvReader = new CsvReader(reader, new CsvConfiguration(CultureInfo.InvariantCulture)
         {
@@ -21,6 +28,15 @@ public class ReadDataFromCsv
 
         var records = csvReader.GetRecordsAsync<EnergyDataSet>();
         return (records, new DisposableCollection(new IDisposable[] {reader, csvReader}));
+    }
+
+    public (IAsyncEnumerable<PowerDataSet>, IDisposable) ReadAsync2(string fileName = FileName_Power_15)
+    {
+        var reader = new StreamReader(fileName);
+        var csvReader = new CsvReader(reader, new CsvConfiguration(CultureInfo.InvariantCulture));
+
+        var records = csvReader.GetRecordsAsync<PowerDataSet>();
+        return (records, new DisposableCollection(new IDisposable[] { reader, csvReader }));
     }
 
     private class DisposableCollection : IDisposable
