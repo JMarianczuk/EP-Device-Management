@@ -9,9 +9,15 @@ SELECT
     strategy,
     configuration,
     success,
-    min(energy_kwh) as minimum,
-    max(energy_kwh) as maximum,
-    avg(energy_kwh) as average
+    min(energy_kwh_in) as minimum_in,
+    max(energy_kwh_in) as maximum_in,
+    avg(energy_kwh_in) as average_in,
+    min(energy_kwh_out) as minimum_out,
+    max(energy_kwh_out) as maximum_out,
+    avg(energy_kwh_out) as average_out,
+    min(generationMissed_kwh) as minimum_missed,
+    max(generationMissed_kwh) as maximum_missed,
+    avg(generationMissed_kwh) as average_missed
 FROM
     simulation
 GROUP BY
@@ -30,9 +36,15 @@ SELECT
     configuration,
     success,
     data,
-    min(energy_kwh) as minimum,
-    max(energy_kwh) as maximum,
-    avg(energy_kwh) as average
+    min(energy_kwh_in) as minimum_in,
+    max(energy_kwh_in) as maximum_in,
+    avg(energy_kwh_in) as average_in,
+    min(energy_kwh_out) as minimum_out,
+    max(energy_kwh_out) as maximum_out,
+    avg(energy_kwh_out) as average_out,
+    min(generationMissed_kwh) as minimum_missed,
+    max(generationMissed_kwh) as maximum_missed,
+    avg(generationMissed_kwh) as average_missed
 FROM
     simulation
 GROUP BY
@@ -53,9 +65,15 @@ SELECT
     success,
     data,
     timeStep,
-    min(energy_kwh) as minimum,
-    max(energy_kwh) as maximum,
-    avg(energy_kwh) as average
+    min(energy_kwh_in) as minimum_in,
+    max(energy_kwh_in) as maximum_in,
+    avg(energy_kwh_in) as average_in,
+    min(energy_kwh_out) as minimum_out,
+    max(energy_kwh_out) as maximum_out,
+    avg(energy_kwh_out) as average_out,
+    min(generationMissed_kwh) as minimum_missed,
+    max(generationMissed_kwh) as maximum_missed,
+    avg(generationMissed_kwh) as average_missed
 FROM
     simulation
 GROUP BY

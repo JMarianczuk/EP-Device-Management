@@ -1,7 +1,7 @@
 ﻿using System;
-using System.Runtime.CompilerServices;
+using LpSolveDotNet;
 
-namespace LpSolveDotNet;
+namespace LpSolverBuilder.LpSolveDotNet;
 
 public interface ILpSolve : IDisposable
 {
@@ -241,6 +241,8 @@ public interface IColumnContainer
     int Count { get; }
 
     LpColumn this[int columnNumber] { get; }
+
+    LpColumn this[LpVariable variable] { get; }
 
     void Add(double[] column);
 

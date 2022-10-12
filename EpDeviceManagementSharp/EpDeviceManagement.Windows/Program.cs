@@ -45,4 +45,19 @@ CultureInfo.CurrentUICulture = CultureInfo.InvariantCulture;
 
 var simulator = new Simulator();
 //await simulator.AnalyzeAsync();
-await simulator.SimulateAsync();
+try
+{
+    await simulator.SimulateAsync();
+}
+catch (Exception e)
+{
+    if (Debugger.IsAttached)
+    {
+        Debugger.Break();
+    }
+    else
+    {
+        Console.WriteLine(e);
+        Console.WriteLine(e.StackTrace);
+    }
+}

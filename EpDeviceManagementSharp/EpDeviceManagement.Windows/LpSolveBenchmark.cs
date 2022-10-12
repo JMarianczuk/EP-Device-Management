@@ -3,6 +3,7 @@ using System.Globalization;
 using System.Runtime.CompilerServices;
 using BenchmarkDotNet.Attributes;
 using LpSolveDotNet;
+using LpSolverBuilder.LpSolveDotNet;
 using UnitsNet;
 
 namespace EpDeviceManagement.Windows;
@@ -197,7 +198,7 @@ public class LpSolveBenchmark
         var s = Create(Steps, "s");
         var r = Create(Steps, "r");
 
-        var lp = new LpSolveDotNet.LpSolveDotNet(LpSolve.make_lp(0, index));
+        var lp = new LpSolverBuilder.LpSolveDotNet.LpSolveDotNet(LpSolve.make_lp(0, index));
 
         LpSum objectiveFunction = new LpSum();
         for (int i = 0; i < Steps; i += 1)

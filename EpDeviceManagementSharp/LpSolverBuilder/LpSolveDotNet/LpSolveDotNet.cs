@@ -1,8 +1,7 @@
 ﻿using System;
-using System.Runtime.InteropServices;
-using System.Security.Cryptography.X509Certificates;
+using LpSolveDotNet;
 
-namespace LpSolveDotNet;
+namespace LpSolverBuilder.LpSolveDotNet;
 
 public class LpSolveDotNet : ILpSolve
 {
@@ -650,6 +649,9 @@ public sealed class ColumnContainer : IColumnContainer
 
     public LpColumn this[int columnNumber]
         => new LpColumn(columnNumber, this.solver);
+
+    public LpColumn this[LpVariable variable]
+        => this[variable.ColumnNumber];
 
     public void Add(double[] column)
         => this.solver.AddColumn(column);

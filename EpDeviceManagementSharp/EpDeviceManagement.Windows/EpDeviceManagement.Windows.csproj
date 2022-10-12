@@ -10,7 +10,7 @@
   <ItemGroup>
     <PackageReference Include="BenchmarkDotNet" Version="0.13.1" />
     <PackageReference Include="LpSolveDotNet.Native.win-x64" Version="4.0.0" />
-    <PackageReference Include="UnitsNet" Version="4.144.0" />
+    <PackageReference Include="UnitsNet" Version="4.145.0" />
   </ItemGroup>
 
   <ItemGroup>

@@ -221,9 +221,9 @@ namespace EpDeviceManagement.Simulation
                 }
             };
 
-            UncontrollableGeneration[] generators = new UncontrollableGeneration[]
+            ControllableGeneration[] generators = new ControllableGeneration[]
             {
-                new UncontrollableGeneration()
+                new ControllableGeneration()
                 {
                     CurrentGeneration = Power.Zero,
                 },
@@ -242,7 +242,9 @@ namespace EpDeviceManagement.Simulation
                 BatteryConfiguration = $"{batteryConfig.Description} [{battery.TotalCapacity}]",
                 Seed = seed,
             };
-            double totalKwh = 0;
+            double totalKwhIn = 0;
+            double totalKwhOut = 0;
+            double generatedKwhMissed = 0;
             var batteryMinSoC = battery.CurrentStateOfCharge;
             var batteryMaxSoC = battery.CurrentStateOfCharge;
             var batterySoCSum = battery.CurrentStateOfCharge;
@@ -251,10 +253,14 @@ namespace EpDeviceManagement.Simulation
             void SetResultValues()
             {
                 result.StepsSimulated = step;
-                result.TotalKilowattHoursTransferred = totalKwh;
+                result.TotalKilowattHoursIncoming = totalKwhIn;
+                result.TotalKilowattHoursOutgoing = totalKwhOut;
+                result.TotalKilowattHoursGenerationMissed = generatedKwhMissed;
                 result.BatteryMinSoC = batteryMinSoC;
                 result.BatteryMaxSoC = batteryMaxSoC;
-                result.BatteryAvgSoC = batterySoCSum / step;
+                result.BatteryAvgSoC = step != 0
+                    ? batterySoCSum / step
+                    : battery.CurrentStateOfCharge;
             }
             foreach (var entry in dataSet.Data)
             {
@@ -271,23 +277,45 @@ namespace EpDeviceManagement.Simulation
 //                }
 //#endif
 
-                for (int i = 0; i < (int)Math.Round(numberOfSimSteps); i += 1)
+                ControlDecision decision;
+                try
                 {
-                    var decision = strategy.DoControl(timeStep, loads, generators, lastDecision);
+                    decision = strategy.DoControl(dataPoint, timeStep, loads, generators, lastDecision);
+                }
+                catch (Exception e)
+                {
+                    SetResultValues();
+                    result.Success = false;
+                    result.FailReason = BatteryFailReason.Exception;
+                    return result;
+                }
+                if (!generators[0].IsGenerating)
+                {
+                    generatedKwhMissed += generators[0].CurrentGeneration.Kilowatts;
+                    generators[0].IsGenerating = true;
+                    generators[0].CurrentGeneration = Power.Zero;
+                }
                     Energy packet;
                     if (decision is ControlDecision.RequestTransfer rt)
                     {
                         var success = random.NextDouble() <= packetProbability.DecimalFractions;
                         if (success)
                         {
-                            packet = rt.RequestedDirection == PacketTransferDirection.Outgoing
-                                ? packetSize
-                                : -packetSize;
+                        if (rt.RequestedDirection == PacketTransferDirection.Outgoing)
+                        {
+                            packet = packetSize;
+                            totalKwhOut += packetSize.KilowattHours;
+                        }
+                        else
+                        {
+                            packet = -packetSize;
+                            totalKwhIn += packetSize.KilowattHours;
+                        }
+
                             lastDecision = new TransferResult.Success()
                             {
                                 PerformedDirection = rt.RequestedDirection,
                             };
-                            totalKwh += packetSize.KilowattHours;
                         }
                         else
                         {
@@ -357,6 +385,10 @@ namespace EpDeviceManagement.Simulation
 
             SetResultValues();
             result.Success = true;
+            if (strategy is IDisposable disposable)
+            {
+                disposable.Dispose();
+            }
             return result;
         }
 

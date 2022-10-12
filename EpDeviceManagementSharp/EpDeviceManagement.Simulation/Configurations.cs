@@ -92,7 +92,11 @@ public class SimulationResult
 
     public Energy BatteryAvgSoC { get; set; }
 
-    public double TotalKilowattHoursTransferred { get; set; }
+    public double TotalKilowattHoursIncoming { get; set; }
+
+    public double TotalKilowattHoursOutgoing { get; set; }
+
+    public double TotalKilowattHoursGenerationMissed { get; set; }
 }
 
 public enum BatteryFailReason
@@ -101,5 +105,6 @@ public enum BatteryFailReason
     BelowZero,
     ExceedCapacity,
     ExceedDischargePower,
-    ExceedChargePower
+    ExceedChargePower,
+    Exception
 }

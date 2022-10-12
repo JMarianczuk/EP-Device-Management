@@ -1,4 +1,5 @@
 ﻿using LpSolveDotNet;
+using LpSolverBuilder.LpSolveDotNet;
 
 namespace EpDeviceManagement.Windows;
 
@@ -79,7 +80,7 @@ public class BarleyWheatSampleProgram
 
         var wheat = new LpVariable(1);
         var barley = new LpVariable(2);
-        var lp = new LpSolveDotNet.LpSolveDotNet(LpSolve.make_lp(0, 2));
+        var lp = new LpSolverBuilder.LpSolveDotNet.LpSolveDotNet(LpSolve.make_lp(0, 2));
         lp.SetObjectiveFunction(143 * wheat + 60 * barley);
         lp.AddConstraint(120 * wheat + 210 * barley <= 15000);
         lp.AddConstraint(110 * wheat + 30 * barley <= 4000);

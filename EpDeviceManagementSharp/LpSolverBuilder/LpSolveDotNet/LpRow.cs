@@ -1,4 +1,6 @@
-﻿namespace LpSolveDotNet;
+﻿using LpSolveDotNet;
+
+namespace LpSolverBuilder.LpSolveDotNet;
 
 public struct LpRow
 {
