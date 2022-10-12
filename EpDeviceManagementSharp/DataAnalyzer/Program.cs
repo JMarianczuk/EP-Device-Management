@@ -7,4 +7,6 @@ using DataAnalyzer;
 using EpDeviceManagement.Data;
 using UnitsNet;
 
-await Analyzer.AnalyzeDifferenceAsync();
+//await Analyzer.AnalyzeDifferenceAsync();
+//await Forecasting.WriteDataAsync();
+await Analyzer.CalculateStatsAsync();
