@@ -4,7 +4,7 @@ namespace EpDeviceManagement.Control.Strategy;
 
 public class NoExchangeWithTheCell : IEpDeviceController
 {
-    public ControlDecision DoControl(TimeSpan timeStep, IEnumerable<ILoad> loads, IEnumerable<IGenerator> generators, TransferResult lastTransferResult)
+    public ControlDecision DoControl(int dataPoint, TimeSpan timeStep, IEnumerable<ILoad> loads, IEnumerable<IGenerator> generators, TransferResult lastTransferResult)
     {
         return new ControlDecision.NoAction();
     }

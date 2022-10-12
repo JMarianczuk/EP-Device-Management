@@ -2,5 +2,5 @@
 
 public interface IValuePredictor<out TValue>
 {
-    IEnumerable<TValue> Predict(int steps);
+    IEnumerable<TValue> Predict(int steps, int currentDataPoint);
 }

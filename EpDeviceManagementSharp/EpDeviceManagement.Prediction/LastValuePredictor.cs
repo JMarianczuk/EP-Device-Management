@@ -9,7 +9,7 @@ public class LastValuePredictor<TValue> : StreamValuePredictor<TValue>, IValuePr
     {
     }
 
-    public IEnumerable<TValue> Predict(int steps)
+    public IEnumerable<TValue> Predict(int steps, int currentDataPoint)
     {
         var lastValue = this.Entries.Last();
         return Enumerable.Repeat(lastValue, steps);

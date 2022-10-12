@@ -37,7 +37,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EpDeviceManagement.Predicti
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EpDeviceManagement.UnitsExtensions", "EpDeviceManagement.UnitsExtensions\EpDeviceManagement.UnitsExtensions.csproj", "{BF47EBCD-CFBA-4DDF-8AF2-D52CD9EF34A8}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DataAnalyzer", "DataAnalyzer\DataAnalyzer.csproj", "{2B3E2AF9-752F-469C-8A42-0DC1D7F1B6B3}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DataAnalyzer", "DataAnalyzer\DataAnalyzer.csproj", "{2B3E2AF9-752F-469C-8A42-0DC1D7F1B6B3}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

@@ -15,6 +15,8 @@ public class Configuration
 
     public Energy PacketSize { get; init; }
 
+    public DataSet DataSet { get; init; }
+
     public IValuePredictor<Power> LoadsPredictor
     {
         get

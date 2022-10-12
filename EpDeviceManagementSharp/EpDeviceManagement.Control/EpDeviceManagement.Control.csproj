@@ -13,7 +13,10 @@
     </ItemGroup>
 
     <ItemGroup>
+      <ProjectReference Include="..\EpDeviceManagement.Simulation.Storage\EpDeviceManagement.Simulation.Storage.csproj" />
+      <ProjectReference Include="..\EpDeviceManagement.UnitsExtensions\EpDeviceManagement.UnitsExtensions.csproj" />
       <ProjectReference Include="..\EpDeviceManagement\EpDeviceManagement.csproj" />
+      <ProjectReference Include="..\LpSolverBuilder\LpSolverBuilder.csproj" />
     </ItemGroup>
 
     <ItemGroup>

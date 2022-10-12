@@ -2,6 +2,7 @@
 using EpDeviceManagement.Control.Contracts;
 using EpDeviceManagement.Control.Strategy.Base;
 using EpDeviceManagement.Control.Strategy.Guards;
+using EpDeviceManagement.UnitsExtensions;
 using Humanizer;
 using UnitsNet;
 
@@ -37,6 +38,7 @@ public class SimplePredictiveControl : GuardedStrategy, IEpDeviceController
     }
 
     protected override ControlDecision DoUnguardedControl(
+        int dataPoint,
         TimeSpan timeStep,
         IEnumerable<ILoad> loads,
         IEnumerable<IGenerator> generators,
@@ -44,11 +46,11 @@ public class SimplePredictiveControl : GuardedStrategy, IEpDeviceController
     {
         var predictedSteps = (int)(this.predictionHorizon / timeStep);
         var loadPredictions = this.loadsPredictor
-            .Predict(predictedSteps)
-            .Prepend(loads.Select(x => x.CurrentDemand).Aggregate(Power.Zero, PowerSum));
+            .Predict(predictedSteps, dataPoint)
+            .Prepend(loads.Select(x => x.CurrentDemand).Sum());
         var generationPredictions = this.generationPredictor
-            .Predict(predictedSteps)
-            .Prepend(generators.Select(x => x.CurrentGeneration).Aggregate(Power.Zero, PowerSum));
+            .Predict(predictedSteps, dataPoint)
+            .Prepend(generators.Select(x => x.CurrentGeneration).Sum());
         var currentBattery = this.Battery.CurrentStateOfCharge;
         var minSoC = this.Battery.TotalCapacity * 0.1;
         var maxSoC = this.Battery.TotalCapacity * 0.9;

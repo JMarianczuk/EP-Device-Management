@@ -26,6 +26,7 @@ public class StreamValuePredictorDependentControl : IEpDeviceController
     public string PrettyConfiguration => this.strategy.PrettyConfiguration;
 
     public ControlDecision DoControl(
+        int dataPoint,
         TimeSpan timeStep,
         IEnumerable<ILoad> loads,
         IEnumerable<IGenerator> generators,
@@ -36,6 +37,7 @@ public class StreamValuePredictorDependentControl : IEpDeviceController
         this.loadsPredictor.ReportCurrentValue(currentLoad);
         this.generationPredictor.ReportCurrentValue(currentGeneration);
         return this.strategy.DoControl(
+            dataPoint,
             timeStep,
             loads,
             generators,

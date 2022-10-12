@@ -17,6 +17,7 @@ public class AlwaysRequestOutgoingPackets : GuardedStrategy, IEpDeviceController
     }
 
     protected override ControlDecision DoUnguardedControl(
+        int dataPoint,
         TimeSpan timeStep,
         IEnumerable<ILoad> loads,
         IEnumerable<IGenerator> generators,

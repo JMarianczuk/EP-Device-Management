@@ -37,19 +37,21 @@ public abstract class GuardedStrategy : IEpDeviceController
     public abstract string PrettyConfiguration { get; }
 
     protected abstract ControlDecision DoUnguardedControl(
+        int dataPoint,
         TimeSpan timeStep,
         IEnumerable<ILoad> loads,
         IEnumerable<IGenerator> generators,
         TransferResult lastTransferResult);
 
     public ControlDecision DoControl(
+        int dataPoint,
         TimeSpan timeStep,
         IEnumerable<ILoad> loads,
         IEnumerable<IGenerator> generators,
         TransferResult lastTransferResult)
     {
         this.ReportLastTransfer(lastTransferResult);
-        var decision = this.DoUnguardedControl(timeStep, loads, generators, lastTransferResult);
+        var decision = this.DoUnguardedControl(dataPoint, timeStep, loads, generators, lastTransferResult);
         if (decision is ControlDecision.RequestTransfer request)
         {
             switch (request.RequestedDirection)

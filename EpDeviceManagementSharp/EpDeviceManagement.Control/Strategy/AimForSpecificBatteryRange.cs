@@ -52,6 +52,7 @@ public class AimForSpecificBatteryRange : GuardedStrategy, IEpDeviceController
     private IStorage Battery { get; }
 
     protected override ControlDecision DoUnguardedControl(
+        int dataPoint,
         TimeSpan timeStep,
         IEnumerable<ILoad> loads,
         IEnumerable<IGenerator> generators,

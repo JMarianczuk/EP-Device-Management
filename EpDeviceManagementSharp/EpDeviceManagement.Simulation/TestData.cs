@@ -1,4 +1,5 @@
-﻿using EpDeviceManagement.Contracts;
+﻿using System.Collections.Concurrent;
+using EpDeviceManagement.Contracts;
 using EpDeviceManagement.Control.Contracts;
 using EpDeviceManagement.Control.Strategy;
 using EpDeviceManagement.Data;
@@ -188,28 +189,111 @@ public class TestData
                     lower,
                     upper,
                     config.Random));
+                strategies.Add(config => new LinearProbabilisticFunctionControl(
+                    config.Battery,
+                    config.PacketSize,
+                    lower,
+                    upper,
+                    config.Random));
+                strategies.Add(config => new LinearProbabilisticEstimationFunctionControl(
+                    config.Battery,
+                    config.PacketSize,
+                    lower,
+                    upper,
+                    config.Random));
+                //strategies.Add(config => new NonLinearProbabilisticFunctionControl(
+                //    config.Battery,
+                //    config.PacketSize,
+                //    lower,
+                //    upper,
+                //    config.Random,
+                //    TimeSpan.FromMinutes(30)));
             }
         }
 
-        //foreach (var horizon in Enumerable.Range(1, 8).Select(x => TimeSpan.FromHours(x)))
-        //{
-        //    strategies.Add(config =>
-        //    {
-        //        var loadsPredictor = new LastValuePredictor<Power>();
-        //        var generationPredictor = new LastValuePredictor<Power>();
-        //        var strategy = new SimplePredictiveControl(
-        //            config.Battery,
-        //            config.PacketSize,
-        //            horizon,
-        //            loadsPredictor,
-        //            generationPredictor,
-        //            nameof(LastValuePredictor<Power>));
-        //        return new StreamValuePredictorDependentControl(
-        //            strategy,
-        //            loadsPredictor,
-        //            generationPredictor);
-        //    });
-        //}
+        IDictionary<DataSet, (IReadOnlyList<Power> loads, IReadOnlyList<Power> generation)> predictionsCache =
+            new ConcurrentDictionary<DataSet, (IReadOnlyList<Power>, IReadOnlyList<Power>)>();
+
+        (IReadOnlyList<Power> loads, IReadOnlyList<Power> generation) GetOrCreate(DataSet ds)
+        {
+            if (!predictionsCache.TryGetValue(ds, out var tuple))
+            {
+                var l = ds.Data.Select(ds.GetLoadsTotalPower).ToList();
+                var g = ds.Data.Select(ds.GetGeneratorsTotalPower).ToList();
+                predictionsCache[ds] = (l, g);
+                tuple = (l, g);
+            }
+
+            return tuple;
+        }
+        foreach (var horizon in Enumerable.Range(1, 8).Select(x => TimeSpan.FromHours(x)))
+        {
+            strategies.Add(config =>
+            {
+                var ds = config.DataSet;
+                var fuzzyFactor = 0.2;
+                var fuzzyOffset = Power.FromKilowatts(0.1);
+
+                var (loads, generation) = GetOrCreate(ds);
+                var loadsPredictor = new PerfectFuzzyPredictor<Power>(
+                    loads,
+                    p => p.Kilowatts,
+                    kw => Power.FromKilowatts(kw),
+                    fuzzyFactor,
+                    fuzzyOffset,
+                    config.Random);
+                var generationPredictor = new PerfectFuzzyPredictor<Power>(
+                    generation,
+                    p => p.Kilowatts,
+                    kw => Power.FromKilowatts(kw),
+                    fuzzyFactor,
+                    fuzzyOffset,
+                    config.Random);
+                var strategy = new SimplePredictiveControl(
+                    config.Battery,
+                    config.PacketSize,
+                    horizon,
+                    loadsPredictor,
+                    generationPredictor,
+                    nameof(PerfectFuzzyPredictor<Power>));
+                return strategy;
+            });
+            //for (var targetBatteryState = 0.1d; targetBatteryState <= 0.9d; targetBatteryState += 0.1d)
+            //for (var targetBatteryState = 0.4d; targetBatteryState <= 0.6d; targetBatteryState += 0.1d)
+            //{
+            //    var tbs = Ratio.FromDecimalFractions(targetBatteryState);
+            //    strategies.Add(config =>
+            //    {
+            //        var ds = config.DataSet;
+            //        var fuzzyFactor = 0.2;
+            //        var fuzzyOffset = Power.FromKilowatts(0.1);
+
+            //        var (loads, generation) = GetOrCreate(ds);
+            //        var loadsPredictor = new PerfectFuzzyPredictor<Power>(
+            //            loads,
+            //            p => p.Kilowatts,
+            //            kw => Power.FromKilowatts(kw),
+            //            fuzzyFactor,
+            //            fuzzyOffset,
+            //            config.Random);
+            //        var generationPredictor = new PerfectFuzzyPredictor<Power>(
+            //            generation,
+            //            p => p.Kilowatts,
+            //            kw => Power.FromKilowatts(kw),
+            //            fuzzyFactor,
+            //            fuzzyOffset,
+            //            config.Random);
+            //        var mpc = new ModelPredictiveController2(
+            //            config.Battery as BatteryElectricStorage,
+            //            config.PacketSize,
+            //            tbs,
+            //            loadsPredictor,
+            //            generationPredictor,
+            //            horizon);
+            //        return mpc;
+            //    });
+            //}
+        }
 
         return strategies;
     }
@@ -240,9 +324,11 @@ public class TestData
     {
         return MoreEnumerable
             .Sequence(10, 90, 10)
+            .Select(x => (double)x)
             .Prepend(5)
             .Append(95)
             .Append(98)
+            .Append(99.5)
             .Select(x => Ratio.FromPercent(x))
             .ToList();
     }
@@ -252,13 +338,19 @@ public class TestData
         //IReadOnlyList<EnhancedEnergyDataSet> enhancedData;
         IReadOnlyList<EnhancedPowerDataSet> enhancedData;
         //var (data, handle) = new ReadDataFromCsv().ReadAsync();
-        const int lineCountOf15MinData = 153811;
-        progress.Setup(lineCountOf15MinData, "reading the data");
         //enhancedData = await EnhanceAsync(data, timeStep, progress);
         var oneYearOfTimeSteps = (int)(TimeSpan.FromDays(365) / timeStep);
 
         var (data2, handle) = new ReadDataFromCsv().ReadAsync2();
-        enhancedData = await EnhanceAsync2(data2, progress);
+#if DEBUG
+        var totalEntriesUsed = 2 * oneYearOfTimeSteps;
+        progress.Setup(totalEntriesUsed, "reading the data");
+        enhancedData = await EnhanceAsync2(data2, totalEntriesUsed, progress);
+#else
+        const int lineCountOf15MinData = 153811;
+        progress.Setup(lineCountOf15MinData, "reading the data");
+        enhancedData = await EnhanceAsync2(data2, int.MaxValue, progress);
+#endif
         // Data set spans five years, reduce to one
         enhancedData = enhancedData.Skip(oneYearOfTimeSteps).Take(oneYearOfTimeSteps).ToList();
         handle.Dispose();
@@ -384,9 +476,11 @@ public class TestData
 
     public static async Task<IReadOnlyList<EnhancedPowerDataSet>> EnhanceAsync2(
         IAsyncEnumerable<PowerDataSet> data,
+        int numberOfEntriesToRead,
         IProgressIndicator progress)
     {
         var result = new List<EnhancedPowerDataSet>();
+        int read = 0;
         await foreach (var entry in data)
         {
             var l1 = Power.FromKilowatts(
@@ -416,6 +510,11 @@ public class TestData
                 Residential4_Generation = Power.FromKilowatts(entry.DE_KN_residential4_pv),
             });
             progress.FinishOne();
+            read += 1;
+            if (read >= numberOfEntriesToRead)
+            {
+                break;
+            }
         }
 
         return result;
