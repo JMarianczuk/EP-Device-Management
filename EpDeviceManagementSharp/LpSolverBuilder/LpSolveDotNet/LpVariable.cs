@@ -1,12 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Runtime.InteropServices;
-#if !NET20
 using System.Linq;
-#endif
+using LpSolveDotNet;
 
-namespace LpSolveDotNet
+namespace LpSolverBuilder.LpSolveDotNet
 {
     internal static class Errors
     {
@@ -63,6 +61,11 @@ namespace LpSolveDotNet
 
         public static implicit operator LpSummand(LpVariable variable)
             => new LpSummand(variable.ColumnNumber, 1);
+
+        public override string ToString()
+        {
+            return $"C{this.ColumnNumber}";
+        }
     }
 
     public readonly struct LpSummand
@@ -99,10 +102,10 @@ namespace LpSolveDotNet
             => new LpSum(left).Subtract(right);
 
         public static LpSummand operator *(LpSummand summand, double factor)
-            => new LpSummand(summand.VariableColumnNumber, factor);
+            => new LpSummand(summand.VariableColumnNumber, summand.Factor * factor);
 
         public static LpSummand operator *(double factor, LpSummand summand)
-            => new LpSummand(summand.VariableColumnNumber, factor);
+            => new LpSummand(summand.VariableColumnNumber, summand.Factor * factor);
 
         public static LpSummandConstraint operator >=(LpSummand summand, double value)
             => new LpSummandConstraint(summand, lpsolve_constr_types.LE, value);
@@ -117,6 +120,10 @@ namespace LpSolveDotNet
         public static LpSummandConstraint operator !=(LpSummand summand, double value)
             => throw new InvalidOperationException(Errors.InequalityNotSupported);
 
+        public override string ToString()
+        {
+            return $"{this.Factor:+#;-#;0} C{this.VariableColumnNumber}";
+        }
     }
 
     public readonly struct LpSum
@@ -282,6 +289,11 @@ namespace LpSolveDotNet
         [Obsolete(Errors.InequalityNotSupported)]
         public static LpSumConstraint operator !=(LpSum sum, double value)
             => throw new InvalidOperationException(Errors.InequalityNotSupported);
+
+        public override string ToString()
+        {
+            return string.Join(" ", Summands.Select(x => x.ToString()));
+        }
     }
 
     public readonly struct LpSummandConstraint
@@ -317,5 +329,23 @@ namespace LpSolveDotNet
         public LpSum Sum { get; }
         public lpsolve_constr_types ConstraintType { get; }
         public double RightHandSide { get; }
+
+        public override string ToString()
+        {
+            string cType = string.Empty;
+            switch (this.ConstraintType)
+            {
+                case lpsolve_constr_types.EQ:
+                    cType = "=";
+                    break;
+                case lpsolve_constr_types.GE:
+                    cType = ">=";
+                    break;
+                case lpsolve_constr_types.LE:
+                    cType = "<=";
+                    break;
+            }
+            return $"{this.Sum} {cType} {this.RightHandSide}";
+        }
     }
 }

@@ -1,0 +1,1 @@
+cp ../EpDeviceManagementSharp/EpDeviceManagement.Windows/bin/Release/net6.0/results.txt results.txt

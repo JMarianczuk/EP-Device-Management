@@ -1,0 +1,27 @@
+digraph {
+compound=true;
+node [shape=Mrecord]
+rankdir="LR"
+"BatteryLow" [label="BatteryLow"];
+"P1" [label="P1"];
+"P2" [label="P2"];
+"P3" [label="P3"];
+"BatteryHigh" [label="BatteryHigh"];
+
+"BatteryLow" -> "P1" [style="solid", label="BatteryWithinLimits"];
+"P1" -> "P1" [style="solid", label="TransferAccepted"];
+"P1" -> "P2" [style="solid", label="TransferDenied"];
+"P1" -> "BatteryLow" [style="solid", label="BatteryBelowSetpoint"];
+"P1" -> "BatteryHigh" [style="solid", label="BatteryAboveSetpoint"];
+"P2" -> "P1" [style="solid", label="TransferAccepted"];
+"P2" -> "P3" [style="solid", label="TransferDenied"];
+"P2" -> "BatteryLow" [style="solid", label="BatteryBelowSetpoint"];
+"P2" -> "BatteryHigh" [style="solid", label="BatteryAboveSetpoint"];
+"P3" -> "P3" [style="solid", label="TransferDenied"];
+"P3" -> "P2" [style="solid", label="TransferAccepted"];
+"P3" -> "BatteryLow" [style="solid", label="BatteryBelowSetpoint"];
+"P3" -> "BatteryHigh" [style="solid", label="BatteryAboveSetpoint"];
+"BatteryHigh" -> "P3" [style="solid", label="BatteryWithinLimits"];
+ init [label="", shape=point];
+ init -> "BatteryLow"[style = "solid"]
+}

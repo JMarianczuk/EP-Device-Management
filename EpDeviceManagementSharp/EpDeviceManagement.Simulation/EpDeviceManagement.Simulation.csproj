@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\EpDeviceManagement.Control\EpDeviceManagement.Control.csproj" />
+    <ProjectReference Include="..\EpDeviceManagement.Data\EpDeviceManagement.Data.csproj" />
+    <ProjectReference Include="..\EpDeviceManagement.Prediction\EpDeviceManagement.Prediction.csproj" />
+    <ProjectReference Include="..\EpDeviceManagement.Simulation.Storage\EpDeviceManagement.Simulation.Storage.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Loads\" />
+    <Folder Include="Json\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Humanizer.Core" Version="2.14.1" />
+    <PackageReference Include="morelinq" Version="3.3.2" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
+    <PackageReference Include="UnitsNet.Serialization.JsonNet" Version="4.6.0" />
+  </ItemGroup>
+
+</Project>

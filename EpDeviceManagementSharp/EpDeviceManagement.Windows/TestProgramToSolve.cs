@@ -1,4 +1,5 @@
 ﻿using LpSolveDotNet;
+using LpSolverBuilder.LpSolveDotNet;
 using UnitsNet;
 
 namespace EpDeviceManagement.Windows;
@@ -309,7 +310,7 @@ public class TestProgramToSolve
                 switchVariables[i, t] = new LpVariable(index++);
             }
         }
-        var builder = new LpSolveDotNet.LpSolveDotNet(LpSolve.make_lp(0, index));
+        var builder = new LpSolverBuilder.LpSolveDotNet.LpSolveDotNet(LpSolve.make_lp(0, index));
         for (int i = 0; i < numberOfAppliances; i += 1)
         {
             builder.AddConstraint(powerVariables[i] >= 0);

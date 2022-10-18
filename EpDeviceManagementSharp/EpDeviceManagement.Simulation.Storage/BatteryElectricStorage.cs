@@ -5,9 +5,6 @@ namespace EpDeviceManagement.Simulation.Storage;
 
 public class BatteryElectricStorage : IStorage
 {
-    private readonly Frequency standingLosses;
-    private readonly decimal chargingEfficiency;
-    private readonly decimal dischargingEfficiency;
     private Energy currentStateOfCharge;
 
     public BatteryElectricStorage(
@@ -24,10 +21,14 @@ public class BatteryElectricStorage : IStorage
         {
             throw new ArgumentOutOfRangeException(nameof(dischargingEfficiency));
         }
-        this.standingLosses = standingLosses;
-        this.chargingEfficiency = (decimal) chargingEfficiency.DecimalFractions;
-        this.dischargingEfficiency = (decimal) dischargingEfficiency.DecimalFractions;
+        this.StandingLosses = standingLosses;
+        this.ChargingEfficiency = (decimal) chargingEfficiency.DecimalFractions;
+        this.DischargingEfficiency = (decimal) dischargingEfficiency.DecimalFractions;
     }
+
+    public Frequency StandingLosses { get; }
+    public decimal ChargingEfficiency { get; }
+    public decimal DischargingEfficiency { get; }
     
     public Energy TotalCapacity { get; init; }
 
@@ -43,9 +44,9 @@ public class BatteryElectricStorage : IStorage
     public void Simulate(TimeSpan timeStep, Power chargeRate, Power dischargeRate)
     {
         var chargeDifference = timeStep *
-                               (this.chargingEfficiency * chargeRate
-                                - this.dischargingEfficiency * dischargeRate);
-        var standingLossRate = this.standingLosses * this.CurrentStateOfCharge;
+                               (this.ChargingEfficiency * chargeRate
+                                - this.DischargingEfficiency * dischargeRate);
+        var standingLossRate = this.StandingLosses * this.CurrentStateOfCharge;
         var standingLoss = standingLossRate * timeStep;
         var newSoC = this.CurrentStateOfCharge + chargeDifference - standingLoss;
         if (newSoC < Energy.Zero)
@@ -59,5 +60,10 @@ public class BatteryElectricStorage : IStorage
         }
 
         this.currentStateOfCharge = newSoC;
+    }
+
+    public override string ToString()
+    {
+        return $"{this.CurrentStateOfCharge} / {this.TotalCapacity}";
     }
 }

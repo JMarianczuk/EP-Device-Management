@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net6.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CsvHelper" Version="28.0.1" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="6.0.9" />
+    <PackageReference Include="SQLite" Version="3.13.0" />
+    <PackageReference Include="System.Interactive" Version="6.0.1" />
+    <PackageReference Include="System.Interactive.Async" Version="6.0.1" />
+    <PackageReference Include="System.Linq.Async" Version="6.0.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\EpDeviceManagement.Data.Generation\EpDeviceManagement.Data.Generation.csproj" />
+    <ProjectReference Include="..\EpDeviceManagement.Data\EpDeviceManagement.Data.csproj" />
+    <ProjectReference Include="..\EpDeviceManagement.Simulation\EpDeviceManagement.Simulation.csproj" />
+  </ItemGroup>
+
+</Project>
