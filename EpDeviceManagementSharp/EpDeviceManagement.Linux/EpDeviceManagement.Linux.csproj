@@ -9,7 +9,7 @@
 
     <ItemGroup>
       <PackageReference Include="LpSolveDotNet.Native.linux-x64" Version="4.0.0" />
-      <PackageReference Include="UnitsNet" Version="4.137.0" />
+      <PackageReference Include="UnitsNet" Version="4.145.0" />
     </ItemGroup>
 
     <ItemGroup>

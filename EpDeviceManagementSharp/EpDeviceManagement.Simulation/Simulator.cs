@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Globalization;
 using EpDeviceManagement.Contracts;
 using EpDeviceManagement.Control;
+using EpDeviceManagement.Control.Strategy;
 using EpDeviceManagement.Simulation.Loads;
 using UnitsNet;
 using Humanizer;

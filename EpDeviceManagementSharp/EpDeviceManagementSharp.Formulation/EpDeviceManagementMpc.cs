@@ -5,6 +5,7 @@ using EpDeviceManagement.Contracts;
 using EpDeviceManagement.Simulation.Heating;
 using EpDeviceManagement.Simulation.Storage;
 using LpSolveDotNet;
+using LpSolverBuilder.LpSolveDotNet;
 using UnitsNet;
 
 namespace EpDeviceManagement.Windows;
@@ -110,7 +111,7 @@ public class EpDeviceManagementMpc
         var r_ewh = GetSingle();
         var r_battery = GetSingle();
 
-        using var lp = new LpSolveDotNet.LpSolveDotNet(LpSolve.make_lp(0, index));
+        using var lp = new LpSolverBuilder.LpSolveDotNet.LpSolveDotNet(LpSolve.make_lp(0, index));
 
         LpSum objectiveFunction = LpSum.Empty();
         for (int i = 0; i < steps; i += 1)

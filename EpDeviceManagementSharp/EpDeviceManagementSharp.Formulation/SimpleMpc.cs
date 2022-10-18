@@ -2,6 +2,7 @@
 using System.Globalization;
 using System.Runtime.CompilerServices;
 using LpSolveDotNet;
+using LpSolverBuilder.LpSolveDotNet;
 using UnitsNet;
 
 namespace EpDeviceManagement.Windows;
@@ -63,7 +64,7 @@ public class SimpleMpc
         var s = Create(steps, "s");
         var r = Create(steps, "r");
 
-        using var lp = new LpSolveDotNet.LpSolveDotNet(LpSolve.make_lp(0, index));
+        using var lp = new LpSolverBuilder.LpSolveDotNet.LpSolveDotNet(LpSolve.make_lp(0, index));
         
         LpSum objectiveFunction = new LpSum();
         for (int i = 0; i < steps; i += 1)
