@@ -1,4 +1,5 @@
 ﻿using EpDeviceManagement.Contracts;
+using EpDeviceManagement.Control.Contracts;
 using EpDeviceManagement.Control.Strategy.Guards;
 
 namespace EpDeviceManagement.Control.Strategy.Base;
@@ -6,20 +7,57 @@ namespace EpDeviceManagement.Control.Strategy.Base;
 public abstract class GuardedStrategy : IEpDeviceController
 {
     private readonly IEnumerable<IControlGuard> guards;
+    private readonly GuardSummaryImpl guardSummary;
 
     protected GuardedStrategy(params IControlGuard[] guards)
     {
         this.guards = guards;
+        this.guardSummary = new GuardSummaryImpl();
     }
+
+    public IGuardSummary GuardSummary => this.guardSummary;
 
     private bool CanRequestIncoming(TimeSpan timeStep, IEnumerable<ILoad> loads, IEnumerable<IGenerator> generators)
     {
-        return this.guards.All(x => x.CanRequestIncoming(timeStep, loads, generators));
+        foreach (var g in guards)
+        {
+            if (!g.CanRequestIncoming(timeStep, loads, generators))
+            {
+                this.IncrementGuardCounter(g);
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private void IncrementGuardCounter(IControlGuard guard)
+    {
+        switch (guard)
+        {
+            case BatteryPowerGuard:
+                this.guardSummary.PowerGuards += 1;
+                break;
+            case BatteryCapacityGuard:
+                this.guardSummary.CapacityGuards += 1;
+                break;
+            case OscillationGuard:
+                this.guardSummary.OscillationGuards += 1;
+                break;
+        }
     }
 
     private bool CanRequestOutgoing(TimeSpan timeStep, IEnumerable<ILoad> loads, IEnumerable<IGenerator> generators)
     {
-        return this.guards.All(x => x.CanRequestOutgoing(timeStep, loads, generators));
+        foreach (var g in this.guards)
+        {
+            if (!g.CanRequestOutgoing(timeStep, loads, generators))
+            {
+                this.IncrementGuardCounter(g);
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private void ReportLastTransfer(TransferResult lastTransferResult)
@@ -72,5 +110,14 @@ public abstract class GuardedStrategy : IEpDeviceController
         }
 
         return decision;
+    }
+
+    private class GuardSummaryImpl : IGuardSummary
+    {
+        public int PowerGuards { get; set; }
+
+        public int CapacityGuards { get; set; }
+
+        public int OscillationGuards { get; set; }
     }
 }

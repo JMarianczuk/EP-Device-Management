@@ -17,11 +17,12 @@ public class AimForSpecificBatteryRange : GuardedStrategy, IEpDeviceController
         IStorage battery,
         Energy packetSize,
         Ratio desiredMinimumLevel,
-        Ratio desiredMaximumLevel)
+        Ratio desiredMaximumLevel,
+        bool withOscillationGuard = true)
         : base(
             new BatteryCapacityGuard(battery, packetSize),
             new BatteryPowerGuard(battery, packetSize),
-            new OscillationGuard())
+            withOscillationGuard ? new OscillationGuard() : DummyGuard.Instance)
     {
         if (desiredMinimumLevel > desiredMaximumLevel)
         {

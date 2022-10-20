@@ -3,8 +3,11 @@ library(optparse)
 library(RSQLite)
 library(stringr)
 
-con <- dbConnect(SQLite(), "results.sqlite")
-some_res <- dbExecute(con, "PRAGMA case_sensitive_like=ON;")
+source("r_helpers/sql_helpers.r")
+source("r_helpers/string_helpers.r")
+source("r_helpers/array_helpers.r")
+
+con <- create_db_connection()
 
 data_configurations <- dbGetQuery(con, "select data from simulation group by data")
 batteries <- dbGetQuery(con, "select battery from simulation group by battery")
@@ -27,14 +30,9 @@ get_query <- function(data_name, battery_name, timestep_name) {
 
 do_plot <- function(data_name, battery_name, timestep_name, title, file_name) {
     res <- dbGetQuery(con, get_query(data_name, battery_name, timestep_name))
-    num_value <- function(text) {
-        only_number <- substring(text, first = 1, last = nchar(text) - 2)
-        numeric <- as.numeric(only_number)
-        numeric
-    }
 
     thisplot <- ggplot(res, aes(
-        x = reorder(probability, num_value(probability)),
+        x = reorder(probability, probability_num_value(probability)),
         y = packetSize,
         colour = strategy,
         shape = strategy,

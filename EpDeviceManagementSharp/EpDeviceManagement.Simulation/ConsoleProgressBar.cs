@@ -14,7 +14,7 @@ public class ConsoleProgressBar : IProgressIndicator
         _progress = progress;
     }
 
-    public void Setup(int total, string progressTitle = null)
+    public void Setup(int total, string? progressTitle = null)
     {
         _elementSlotWidth = (double) Console.WindowWidth / total;
         _current = 0;
@@ -52,7 +52,7 @@ public class ConsoleProgressBar : IProgressIndicator
 
 public interface IProgressIndicator : IDisposable
 {
-    void Setup(int total, string progressTitle = null);
+    void Setup(int total, string? progressTitle = null);
     void FinishOne();
     void ProgressComplete();
 }
@@ -63,7 +63,7 @@ public class NoProgress : IProgressIndicator
     {
     }
 
-    public void Setup(int total, string progressTitle = null)
+    public void Setup(int total, string? progressTitle = null)
     {
     }
 

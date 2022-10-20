@@ -20,11 +20,12 @@ public class SimplePredictiveControl : GuardedStrategy, IEpDeviceController
         TimeSpan predictionHorizon,
         IValuePredictor<Power> loadsPredictor,
         IValuePredictor<Power> generationPredictor,
-        string predictorConfiguration)
+        string predictorConfiguration,
+        bool withOscillationGuard)
         : base(
             new BatteryCapacityGuard(battery, packetSize),
             new BatteryPowerGuard(battery, packetSize),
-            new OscillationGuard())
+            withOscillationGuard ? new OscillationGuard() : DummyGuard.Instance)
     {
         this.predictionHorizon = predictionHorizon;
         this.loadsPredictor = loadsPredictor;

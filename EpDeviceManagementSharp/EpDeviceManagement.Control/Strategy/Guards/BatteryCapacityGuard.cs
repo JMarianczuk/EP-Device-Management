@@ -3,7 +3,7 @@ using UnitsNet;
 
 namespace EpDeviceManagement.Control.Strategy.Guards;
 
-public class BatteryCapacityGuard : BatteryGuardBase, IControlGuard
+public sealed class BatteryCapacityGuard : BatteryGuardBase, IControlGuard
 {
     public BatteryCapacityGuard(
         IStorage battery,

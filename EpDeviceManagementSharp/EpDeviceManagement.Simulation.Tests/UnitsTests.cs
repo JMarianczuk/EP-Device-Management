@@ -1,4 +1,5 @@
-﻿using FluentAssertions;
+﻿using EpDeviceManagement.UnitsExtensions;
+using FluentAssertions;
 using UnitsNet;
 using UnitsNet.Units;
 

@@ -20,11 +20,12 @@ public abstract class SingleStateProbabilisticFunctionControl : GuardedStrategy,
         Energy packetSize,
         Ratio lowerLevel,
         Ratio upperLevel,
-        RandomNumberGenerator random)
+        RandomNumberGenerator random,
+        bool withOscillationGuard)
         : base(
             new BatteryCapacityGuard(battery, packetSize),
             new BatteryPowerGuard(battery, packetSize),
-            new OscillationGuard())
+            withOscillationGuard ? new OscillationGuard() : DummyGuard.Instance)
     {
         this.lowerLevel = lowerLevel;
         this.upperLevel = upperLevel;

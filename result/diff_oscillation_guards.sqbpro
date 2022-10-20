@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?><sqlb_project><db path="E:\Jasper\Studium\KIT\Masterthesis\epdevicemanagement-code\result\results.sqlite" readonly="0" foreign_keys="1" case_sensitive_like="0" temp_store="0" wal_autocheckpoint="1000" synchronous="2"/><attached/><window><main_tabs open="structure browser pragmas query" current="3"/></window><tab_structure><column_width id="0" width="300"/><column_width id="1" width="0"/><column_width id="2" width="100"/><column_width id="3" width="3256"/><column_width id="4" width="0"/><expanded_item id="0" parent="1"/><expanded_item id="1" parent="1"/><expanded_item id="2" parent="1"/><expanded_item id="3" parent="1"/></tab_structure><tab_browse><current_table name="4,9:maindata_stat"/><default_encoding codec=""/><browse_table_settings/></tab_browse><tab_sql><sql name="SQL 1">select sum(withoutDeficit) totalWithoutDeficit, (sum(withCount) + sum(withoutCount)) / 2 as midCount, lower, upper, strategy, configuration from
+(
+	select
+		new.*, new.count as withCount, old.count as withoutCount, new.count - old.count as withoutDeficit,
+		cast(substr(new.configuration, 4, 1) as NUMERIC) as lower, cast(substr(new.configuration, 10, 1) as NUMERIC) as upper
+	FROM
+		successful_counts_scdt new, successful_counts_scdt_copy old
+	WHERE
+		new.strategy = old.strategy
+		AND new.configuration = old.configuration
+		AND new.success = old.success
+		AND new.data = old.data
+		AND new.success = &quot;True&quot;
+		AND new.strategy &lt;&gt; &quot;SimplePredictiveControl&quot;
+		AND new.strategy &lt;&gt; &quot;AlwaysRequestIncomingPackets&quot;
+)
+group by strategy, configuration
+order by strategy, upper - lower</sql><sql name="SQL 2">select avg(withoutSurplus) avgWithoutSurplus, strategy, lower, upper, configuration, data
+from
+(
+	select
+		new.average_in as withAvg, old.average_in as withoutAvg, old.average_in - new.average_in as withoutSurplus, new.*,
+		cast(substr(new.configuration, 4, 1) as NUMERIC) as lower, cast(substr(new.configuration, 10, 1) as NUMERIC) as upper
+	FROM
+		energy_scdt_stat new, energy_scdt_stat_copy old
+	WHERE
+		new.strategy = old.strategy
+		AND new.configuration = old.configuration
+		AND new.success = old.success
+		AND new.data = old.data
+		AND new.success = &quot;True&quot;
+		AND new.strategy &lt;&gt; &quot;SimplePredictiveControl&quot;
+		AND new.strategy &lt;&gt; &quot;AlwaysRequestIncomingPackets&quot;
+)
+group by strategy, configuration
+order by strategy, upper - lower</sql><sql name="SQL 3">select * from energy_scdt_stat
+where strategy = &quot;AimForSpecificBatteryRange&quot; and data = &quot;Res1&quot; and configuration = &quot;[0.70, 0.80]&quot;</sql><sql name="SQL 4">select * from energy_scdt_stat_copy
+where strategy = &quot;AimForSpecificBatteryRange&quot; and data = &quot;Res1&quot; and configuration = &quot;[0.70, 0.80]&quot;</sql><sql name="SQL 5">select *, energy_kwh_out - energy_kwh_in as diff
+from simulation_with_counts_scdt
+where strategy = &quot;AimForSpecificBatteryRange&quot; and data = &quot;Res1&quot; and configuration = &quot;[0.70, 0.80]&quot;
+and success = &quot;True&quot;</sql><sql name="SQL 7">select strategy, packetSize, count(*) as count from simulation where success=&quot;True&quot; group by strategy, packetSize</sql><sql name="SQL 8">select *, avg_energy_in as value, &quot;energy&quot; as facet from
+( select *, avg(energy_kwh_in) as avg_energy_in, count(*) as ct from simulation where success=&quot;True&quot; group by packetSize, strategy )
+UNION
+select *, ct as value, &quot;count&quot; as facet from
+( select *, avg(energy_kwh_in) as avg_energy_in, count(*) as ct from simulation where success=&quot;True&quot; group by packetSize, strategy )</sql><sql name="SQL 9">select succ.*, cast(succ.count as REAL) / total.totalCount as value, succ.count, total.totalCount, &quot;successful count&quot; as facet
+from (
+	( select *, avg(energy_kwh_in) as avg_energy_in, count(*) as count from simulation where success=&quot;True&quot; group by probability, data ) succ,
+	( select *, count(*) as totalCount from simulation group by probability, data ) total
+) where succ.probability=total.probability and succ.data=total.data</sql><current_tab id="7"/></tab_sql></sqlb_project>

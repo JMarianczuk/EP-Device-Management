@@ -73,7 +73,7 @@ public class IndexEnumerator<TValue> : IEnumerator<TValue>
 
     public void Reset() => throw new NotImplementedException();
 
-    object IEnumerator.Current => Current;
+    object? IEnumerator.Current => Current;
 
     public void Dispose()
     {

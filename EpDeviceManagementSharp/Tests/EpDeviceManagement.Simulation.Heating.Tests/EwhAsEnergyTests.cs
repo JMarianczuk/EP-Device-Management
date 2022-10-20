@@ -65,12 +65,12 @@ public class EwhAsEnergyTests
         Power? heatPower = null,
         Ratio? heatEfficiency = null,
         int? currentTimeStep = null,
-        Func<int, Temperature> getAmbientTemperature = null,
-        Func<int, VolumeFlow> getHotWaterWithdrawalRate = null,
-        Func<int, Temperature> getInletTemperature = null,
-        Func<int, IEnumerable<Temperature>> predictInletTemperatures = null,
-        Func<int, IEnumerable<Temperature>> predictAmbientTemperatures = null,
-        Func<int, IEnumerable<VolumeFlow>> predictWaterWithdrawalRates = null)
+        Func<int, Temperature>? getAmbientTemperature = null,
+        Func<int, VolumeFlow>? getHotWaterWithdrawalRate = null,
+        Func<int, Temperature>? getInletTemperature = null,
+        Func<int, IEnumerable<Temperature>>? predictInletTemperatures = null,
+        Func<int, IEnumerable<Temperature>>? predictAmbientTemperatures = null,
+        Func<int, IEnumerable<VolumeFlow>>? predictWaterWithdrawalRates = null)
     {
         // time-constant: at R-10 this means 1/10 of Temp. difference is lost per hour, so the time constant is 10 hours
         return new EwhAsEnergy(

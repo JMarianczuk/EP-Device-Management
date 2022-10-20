@@ -9,8 +9,9 @@ public class LinearProbabilisticEstimationFunctionControl : LinearProbabilisticF
 {
     public LinearProbabilisticEstimationFunctionControl(IStorage battery, Energy packetSize, Ratio lowerLevel,
         Ratio upperLevel,
-        RandomNumberGenerator random)
-        : base(battery, packetSize, lowerLevel, upperLevel, random)
+        RandomNumberGenerator random,
+        bool withOscillationGuard)
+        : base(battery, packetSize, lowerLevel, upperLevel, random, withOscillationGuard)
     {
         this.assumedCurrentBatterySoC = battery.CurrentStateOfCharge;
     }

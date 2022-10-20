@@ -195,7 +195,7 @@ public class EpDeviceManagementMpc
             solution.GetVariables(values);
             for (int i = 0; i < steps; i += 1)
             {
-                void Write(LpVariable[] var, [CallerArgumentExpression("var")] string varExpr = null) => Console.Write($"{varExpr}[{i:00}] = {GetString(var[i])}, ");
+                void Write(LpVariable[] var, [CallerArgumentExpression("var")] string? varExpr = null) => Console.Write($"{varExpr}[{i:00}] = {GetString(var[i])}, ");
                 Write(x_ewh);
                 Write(u_ewh);
                 Write(x_battery);

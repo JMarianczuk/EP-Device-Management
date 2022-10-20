@@ -2,9 +2,9 @@
 
 namespace EpDeviceManagement.Control.Strategy.Guards;
 
-public class OscillationGuard : IControlGuard
+public sealed class OscillationGuard : IControlGuard
 {
-    private TransferResult lastTransfer;
+    private TransferResult? lastTransfer;
 
     public bool CanRequestIncoming(TimeSpan timeStep, IEnumerable<ILoad> loads, IEnumerable<IGenerator> generators)
     {

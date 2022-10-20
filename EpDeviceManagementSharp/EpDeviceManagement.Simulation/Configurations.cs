@@ -8,38 +8,13 @@ namespace EpDeviceManagement.Simulation;
 
 public class Configuration
 {
-    private readonly IValuePredictor<Power> loadsPredictor;
-    private readonly IValuePredictor<Power> generationPredictor;
-
     public IStorage Battery { get; init; }
 
     public Energy PacketSize { get; init; }
 
     public DataSet DataSet { get; init; }
 
-    public IValuePredictor<Power> LoadsPredictor
-    {
-        get
-        {
-            this.PredictorUsed = true;
-            return loadsPredictor;
-        }
-        init => loadsPredictor = value;
-    }
-
-    public IValuePredictor<Power> GenerationPredictor
-    {
-        get
-        {
-            this.PredictorUsed = true;
-            return generationPredictor;
-        }
-        init => generationPredictor = value;
-    }
-
     public RandomNumberGenerator Random { get; init; }
-
-    public bool PredictorUsed { get; private set; } = false;
 }
 
 public class DataSet
@@ -57,7 +32,7 @@ public class DataSet
 
 public readonly struct BatteryConfiguration
 {
-    public Func<BatteryElectricStorage> CreateBattery { get; init; }
+    public Func<BatteryElectricStorage2> CreateBattery { get; init; }
 
     public string Description { get; init; }
 }
@@ -99,6 +74,12 @@ public class SimulationResult
     public double TotalKilowattHoursOutgoing { get; set; }
 
     public double TotalKilowattHoursGenerationMissed { get; set; }
+
+    public int PowerGuards { get; set; }
+
+    public int CapacityGuards { get; set; }
+
+    public int OscillationGuards { get; set; }
 }
 
 public enum BatteryFailReason

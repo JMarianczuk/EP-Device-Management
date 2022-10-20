@@ -1,8 +1,11 @@
 library(RSQLite)
 library(ggplot2)
 
-con <- dbConnect(SQLite(), "results.sqlite")
-some_res <- dbExecute(con, "PRAGMA case_sensitive_like=ON;")
+source("r_helpers/sql_helpers.r")
+source("r_helpers/string_helpers.r")
+source("r_helpers/array_helpers.r")
+
+con <- create_db_connection()
 
 data_configurations <- dbGetQuery(con, "select data from simulation group by data")
 time_steps <- dbGetQuery(con, "select timeStep from simulation group by timeStep")
@@ -12,23 +15,6 @@ number_of_packet_sizes <- dbGetQuery(con, "select count(distinct(packetSize)) fr
 number_of_probabilities <- dbGetQuery(con, "select count(distinct(probability)) from simulation")[1, 1]
 number_of_batteries <- dbGetQuery(con, "select count(distinct(battery)) from simulation")[1, 1]
 number_of_combinations <- number_of_batteries * number_of_packet_sizes * number_of_probabilities
-
-get_where <- function(data_name, strat_name, timestep_name) {
-    success_where <- 'success="True"'
-    data_where <- paste('data="', data_name, '"', sep = "")
-    strat_where <- paste('strategy="', strat_name, '"', sep = "")
-    timestep_where <- paste('timeStep="', timestep_name, '"', sep = "")
-    where <- paste("where", success_where, "and", data_where, "and", strat_where, "and", timestep_where)
-    where
-}
-
-get_where2 <- function(data_name, strat_name) {
-    success_where <- 'success="True"'
-    data_where <- paste('data="', data_name, '"', sep = "")
-    strat_where <- paste('strategy="', strat_name, '"', sep = "")
-    where <- paste("where", success_where, "and", data_where, "and", strat_where)
-    where
-}
 
 get_query_ <- function(where, table) {
     query <- paste(
@@ -46,7 +32,7 @@ get_query <- function(data_name, strat_name, timestep_name) {
 }
 
 get_query2 <- function(data_name, strat_name) {
-    where <- get_where2(data_name, strat_name)
+    where <- get_where(data_name, strat_name)
     get_query_(where, "simulation_with_counts_scd")
 }
 
@@ -85,17 +71,6 @@ get_max_query2 <- function(data_name, strat_name) {
     get_max_query_(where, "energy_scd_stat")
 }
 
-first_greater_index <- function(arr, element) {
-    result <- 0
-    for (i in 1:length(arr)) {
-        if (arr[i] > element) {
-            result <- i
-            break
-        }
-    }
-    result
-}
-
 do_plot <- function(data_name, strat_name, timestep_name, title, file_name) {
     res <- dbGetQuery(con, get_query(data_name, strat_name, timestep_name))
     max_energy <- dbGetQuery(con, get_max_query(data_name, strat_name, timestep_name))[1, 1]
@@ -110,8 +85,8 @@ do_plot <- function(data_name, strat_name, timestep_name, title, file_name) {
         sec.axis = sec_axis(~., breaks = c(round(min_energy, digits = 1)))) +
     labs(
         title = "Required energy for each configuration with descending number of successful control passes",
-        x = "Total energy exchanged [kWh]",
-        y = "Configuration x Successful passes") +
+        x = "Total energy received [kWh]",
+        y = "Configuration x Successful passes / total passes") +
     geom_vline(xintercept = min_energy, color = "blue", linetype = "dashed")
     # geom_vline(xintercept = min_energy[1, 1] + min_energy[1, 2], color = "blue", linetype = "dashed")
 
@@ -136,11 +111,6 @@ do_plot2 <- function(data_name, strat_name, title, file_name) {
     ggsave(file_name, thisplot, width = 25, height = 20, units = "cm")
 }
 
-normalize <- function(text) {
-    normalized <- gsub(":", "-", text)
-    normalized
-}
-
 exists_successful_ <- function(where) {
     query <- paste("select count(*) as num from simulation", where)
     res <- dbGetQuery(con, query)
@@ -155,7 +125,7 @@ exists_successful <- function(data_name, strat_name, timestep_name) {
 }
 
 exists_successful2 <- function(data_name, strat_name) {
-    where <- get_where2(data_name, strat_name)
+    where <- get_where(data_name, strat_name)
     exists_successful_(where)
 }
 

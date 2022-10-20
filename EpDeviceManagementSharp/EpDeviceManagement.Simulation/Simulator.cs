@@ -2,9 +2,13 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Globalization;
+using System.Runtime.CompilerServices;
 using EpDeviceManagement.Contracts;
 using EpDeviceManagement.Control;
+using EpDeviceManagement.Control.Strategy;
+using EpDeviceManagement.Control.Strategy.Base;
 using EpDeviceManagement.Simulation.Loads;
+using EpDeviceManagement.UnitsExtensions;
 using UnitsNet;
 using Humanizer;
 
@@ -67,6 +71,8 @@ namespace EpDeviceManagement.Simulation
             var token = cts.Token;
             async Task WriteEntry(TextWriter streamWriter, SimulationResult simulationResult)
             {
+                string Invariant(ref DefaultInterpolatedStringHandler handler) =>
+                    string.Create(CultureInfo.InvariantCulture, ref handler);
                 await streamWriter.WriteLineAsync(string.Join('\t',
                     "RESULT",
                     $"strategy={simulationResult.StrategyName}",
@@ -77,17 +83,22 @@ namespace EpDeviceManagement.Simulation
                     $"batteryMin={simulationResult.BatteryMinSoC}",
                     $"batteryMax={simulationResult.BatteryMaxSoC}",
                     $"batteryAvg={simulationResult.BatteryAvgSoC}",
-                    $"packetSize={simulationResult.PacketSize}",
-                    $"probability={simulationResult.PacketProbability}",
+                    Invariant(
+                        $"packetSize={simulationResult.PacketSize.KilowattHours:#.#}"),
+                    Invariant(
+                        $"probability={simulationResult.PacketProbability.DecimalFractions:0.###'}"),
                     $"timeStep={simulationResult.TimeStep}",
                     $"success={simulationResult.Success}",
                     $"fail={simulationResult.FailReason}",
+                    $"powerGuards={simulationResult.PowerGuards}",
+                    $"capacityGuards={simulationResult.CapacityGuards}",
+                    $"oscillationGuards={simulationResult.OscillationGuards}",
                     $"steps={simulationResult.StepsSimulated}",
-                    string.Create(CultureInfo.InvariantCulture, 
+                    Invariant(
                         $"energy_kwh_in={simulationResult.TotalKilowattHoursIncoming}"),
-                    string.Create(CultureInfo.InvariantCulture,
+                    Invariant(
                         $"energy_kwh_out={simulationResult.TotalKilowattHoursOutgoing}"),
-                    string.Create(CultureInfo.InvariantCulture,
+                    Invariant(
                         $"generationMissed_kwh={simulationResult.TotalKilowattHoursGenerationMissed}"),
                     $"seed={simulationResult.Seed}"));
             }
@@ -181,9 +192,13 @@ namespace EpDeviceManagement.Simulation
             Console.WriteLine($"simulating took {elapsed.Humanize(precision: 2)} ({elapsed})");
         }
 
+        public delegate IEpDeviceController CreateStrategy(
+            Configuration configuration,
+            bool withOscillationGuard = true);
+
         private SimulationResult SimulateSingle(
             TimeSpan timeStep,
-            Func<Configuration, IEpDeviceController> createStrategy,
+            CreateStrategy createStrategy,
             Energy packetSize,
             DataSet dataSet,
             Ratio packetProbability,
@@ -201,193 +216,242 @@ namespace EpDeviceManagement.Simulation
                 DataSet = dataSet,
             };
             var strategy = createStrategy(strategyConfig);
-#if DEBUG
-            if (strategy is ModelPredictiveController2 mpc)
+            using (strategy as IDisposable)
             {
-                int p = 5;
-            }
-            else
-            {
-                return new SimulationResult();
-            }
-#endif
-
-            UncontrollableLoad[] loads = new UncontrollableLoad[]
-            {
-                new UncontrollableLoad()
+                var loads = new[]
                 {
-                    CurrentDemand = Power.Zero,
-                }
-            };
-
-            ControllableGeneration[] generators = new ControllableGeneration[]
-            {
-                new ControllableGeneration()
-                {
-                    CurrentGeneration = Power.Zero,
-                },
-            };
-
-            int step = 0;
-            var result = new SimulationResult()
-            {
-                PacketProbability = packetProbability,
-                PacketSize = packetSize,
-                TimeStep = timeStep,
-                StrategyName = strategy.Name,
-                StrategyConfiguration = strategy.Configuration,
-                StrategyPrettyConfiguration = strategy.PrettyConfiguration,
-                DataConfiguration = dataSet.Configuration,
-                BatteryConfiguration = $"{batteryConfig.Description} [{battery.TotalCapacity}]",
-                Seed = seed,
-            };
-            double totalKwhIn = 0;
-            double totalKwhOut = 0;
-            double generatedKwhMissed = 0;
-            var batteryMinSoC = battery.CurrentStateOfCharge;
-            var batteryMaxSoC = battery.CurrentStateOfCharge;
-            var batterySoCSum = battery.CurrentStateOfCharge;
-
-            void SetResultValues()
-            {
-                result.StepsSimulated = step;
-                result.TotalKilowattHoursIncoming = totalKwhIn;
-                result.TotalKilowattHoursOutgoing = totalKwhOut;
-                result.TotalKilowattHoursGenerationMissed = generatedKwhMissed;
-                result.BatteryMinSoC = batteryMinSoC;
-                result.BatteryMaxSoC = batteryMaxSoC;
-                result.BatteryAvgSoC = step != 0
-                    ? batterySoCSum / step
-                    : battery.CurrentStateOfCharge;
-            }
-
-            int dataPoint = 0;
-            foreach (var entry in dataSet.Data)
-            {
-                loads[0].CurrentDemand = dataSet.GetLoadsTotalPower(entry);
-                generators[0].CurrentGeneration = dataSet.GetGeneratorsTotalPower(entry);
-
-//#if DEBUG
-//                if (step >= 368856)
-//                {
-//                    int p = 6;
-//                }
-//#endif
-
-                ControlDecision decision;
-                try
-                {
-                    decision = strategy.DoControl(dataPoint, timeStep, loads, generators, lastDecision);
-                }
-                catch (Exception e)
-                {
-                    SetResultValues();
-                    result.Success = false;
-                    result.FailReason = BatteryFailReason.Exception;
-                    return result;
-                }
-                if (!generators[0].IsGenerating)
-                {
-                    generatedKwhMissed += generators[0].CurrentGeneration.Kilowatts;
-                    generators[0].IsGenerating = true;
-                    generators[0].CurrentGeneration = Power.Zero;
-                }
-                Energy packet;
-                if (decision is ControlDecision.RequestTransfer rt)
-                {
-                    var success = random.NextDouble() <= packetProbability.DecimalFractions;
-                    if (success)
+                    new UncontrollableLoad()
                     {
-                        if (rt.RequestedDirection == PacketTransferDirection.Outgoing)
+                        CurrentDemand = Power.Zero,
+                    }
+                };
+
+                var generators = new[]
+                {
+                    new ControllableGeneration()
+                    {
+                        CurrentGeneration = Power.Zero,
+                    },
+                };
+
+                int step = 0;
+                var result = new SimulationResult()
+                {
+                    PacketProbability = packetProbability,
+                    PacketSize = packetSize,
+                    TimeStep = timeStep,
+                    StrategyName = strategy.Name,
+                    StrategyConfiguration = strategy.Configuration,
+                    StrategyPrettyConfiguration = strategy.PrettyConfiguration,
+                    DataConfiguration = dataSet.Configuration,
+                    BatteryConfiguration = $"{batteryConfig.Description} [{battery.TotalCapacity}]",
+                    Seed = seed,
+                };
+                double totalKwhIn = 0;
+                double totalKwhOut = 0;
+                double generatedKwhMissed = 0;
+                var batteryMinSoC = battery.CurrentStateOfCharge;
+                var batteryMaxSoC = battery.CurrentStateOfCharge;
+                var batterySoCSum = battery.CurrentStateOfCharge;
+
+                void SetResultValues()
+                {
+                    result.StepsSimulated = step;
+                    result.TotalKilowattHoursIncoming = totalKwhIn;
+                    result.TotalKilowattHoursOutgoing = totalKwhOut;
+                    result.TotalKilowattHoursGenerationMissed = generatedKwhMissed;
+                    result.BatteryMinSoC = batteryMinSoC;
+                    result.BatteryMaxSoC = batteryMaxSoC;
+                    result.BatteryAvgSoC = step != 0
+                        ? batterySoCSum / step
+                        : battery.CurrentStateOfCharge;
+                    if (strategy is GuardedStrategy guarded)
+                    {
+                        result.PowerGuards = guarded.GuardSummary.PowerGuards;
+                        result.CapacityGuards = guarded.GuardSummary.CapacityGuards;
+                        result.OscillationGuards = guarded.GuardSummary.OscillationGuards;
+                    }
+                }
+
+                int dataPoint = 0;
+                foreach (var entry in dataSet.Data)
+                {
+                    loads[0].CurrentDemand = dataSet.GetLoadsTotalPower(entry);
+                    generators[0].CurrentGeneration = dataSet.GetGeneratorsTotalPower(entry);
+                    generators[0].IsGenerating = true;
+
+                    ControlDecision decision;
+                    try
+                    {
+                        decision = strategy.DoControl(dataPoint, timeStep, loads, generators, lastDecision);
+                    }
+                    catch (Exception e)
+                    {
+                        SetResultValues();
+                        result.Success = false;
+                        result.FailReason = BatteryFailReason.Exception;
+                        return result;
+                    }
+                    Energy packet;
+                    if (decision is ControlDecision.RequestTransfer rt)
+                    {
+                        var success = random.NextDouble() <= packetProbability.DecimalFractions;
+                        if (success)
                         {
-                            packet = packetSize;
-                            totalKwhOut += packetSize.KilowattHours;
+                            if (rt.RequestedDirection == PacketTransferDirection.Outgoing)
+                            {
+                                packet = packetSize;
+                                totalKwhOut += packetSize.KilowattHours;
+                            }
+                            else
+                            {
+                                packet = -packetSize;
+                                totalKwhIn += packetSize.KilowattHours;
+                            }
+
+                            lastDecision = new TransferResult.Success()
+                            {
+                                PerformedDirection = rt.RequestedDirection,
+                            };
                         }
                         else
                         {
-                            packet = -packetSize;
-                            totalKwhIn += packetSize.KilowattHours;
+                            packet = Energy.Zero;
+                            lastDecision = new TransferResult.Failure()
+                            {
+                                RequestedDirection = rt.RequestedDirection,
+                            };
                         }
-
-                        lastDecision = new TransferResult.Success()
-                        {
-                            PerformedDirection = rt.RequestedDirection,
-                        };
                     }
                     else
                     {
                         packet = Energy.Zero;
-                        lastDecision = new TransferResult.Failure()
+                        lastDecision = new TransferResult.NoTransferRequested();
+                    }
+                    // Set generator to do Maximum Power Point Tracking with the current load as reference signal
+                    if (!generators[0].IsGenerating)
+                    {
+                        var fullGeneration = generators[0].CurrentGeneration;
+                        var netLoad = loads[0].CurrentDemand + packet / timeStep;
+                        var isDischargingWithoutGeneration = netLoad >= Power.Zero;
+                        if (isDischargingWithoutGeneration)
                         {
-                            RequestedDirection = rt.RequestedDirection,
-                        };
+                            generators[0].CurrentGeneration = Units.Min(fullGeneration, netLoad);
+                        }
+                        else
+                        {
+                            generators[0].CurrentGeneration = Power.Zero;
+                        }
+                        generatedKwhMissed += (fullGeneration - generators[0].CurrentGeneration).Kilowatts;
                     }
-                }
-                else
-                {
-                    packet = Energy.Zero;
-                    lastDecision = new TransferResult.NoTransferRequested();
-                }
 
-                var dischargePower = loads[0].CurrentDemand
-                    - generators[0].CurrentGeneration
-                    + packet / timeStep;
-                if (dischargePower > Power.Zero)
-                {
-                    if (dischargePower > battery.MaximumDischargePower)
+                    var dischargePower = loads[0].CurrentDemand
+                                         - generators[0].CurrentGeneration
+                                         + packet / timeStep;
+                    if (dischargePower > Power.Zero)
+                    {
+                        if (dischargePower > battery.MaximumDischargePower)
+                        {
+                            SetResultValues();
+                            result.Success = false;
+                            result.FailReason = BatteryFailReason.ExceedDischargePower;
+                            //if (withOscillationGuard && strategy is GuardedStrategy guarded && guarded.GuardSummary.OscillationGuards > 0)
+                            //{
+                            //    var withoutResult = this.SimulateSingle(timeStep, createStrategy, packetSize, dataSet, packetProbability, seed, batteryConfig, false);
+                            //    if (withoutResult.Success)
+                            //    {
+                            //        withoutResult.OscillationGuards = -1;
+                            //        return withoutResult;
+                            //    }
+                            //    else if (withoutResult.StepsSimulated > result.StepsSimulated)
+                            //    {
+                            //        withoutResult.OscillationGuards = -2;
+                            //        return withoutResult;
+                            //    }
+                            //}
+                            return result;
+                        }
+                        battery.Simulate(timeStep, Power.Zero, dischargePower);
+                    }
+                    else
+                    {
+                        var chargePower = -dischargePower;
+                        if (chargePower > battery.MaximumChargePower)
+                        {
+                            SetResultValues();
+                            result.Success = false;
+                            result.FailReason = BatteryFailReason.ExceedChargePower;
+                            //if (withOscillationGuard && strategy is GuardedStrategy guarded && guarded.GuardSummary.OscillationGuards > 0)
+                            //{
+                            //    var withoutResult = this.SimulateSingle(timeStep, createStrategy, packetSize, dataSet, packetProbability, seed, batteryConfig, false);
+                            //    if (withoutResult.Success)
+                            //    {
+                            //        withoutResult.OscillationGuards = -1;
+                            //        return withoutResult;
+                            //    }
+                            //    else if (withoutResult.StepsSimulated > result.StepsSimulated)
+                            //    {
+                            //        withoutResult.OscillationGuards = -2;
+                            //        return withoutResult;
+                            //    }
+                            //}
+                            return result;
+                        }
+                        battery.Simulate(timeStep, chargePower, Power.Zero);
+                    }
+                    step += 1;
+
+                    batteryMinSoC = Units.Min(batteryMinSoC, battery.CurrentStateOfCharge);
+                    batteryMaxSoC = Units.Max(batteryMaxSoC, battery.CurrentStateOfCharge);
+                    batterySoCSum += battery.CurrentStateOfCharge;
+
+                    var belowZero = battery.CurrentStateOfCharge <= Energy.Zero;
+                    var exceedCapacity = battery.CurrentStateOfCharge >= battery.TotalCapacity;
+                    if (belowZero || exceedCapacity)
                     {
                         SetResultValues();
                         result.Success = false;
-                        result.FailReason = BatteryFailReason.ExceedDischargePower;
+                        if (belowZero)
+                        {
+                            result.FailReason = BatteryFailReason.BelowZero;
+                        }
+                        else if (exceedCapacity)
+                        {
+                            result.FailReason = BatteryFailReason.ExceedCapacity;
+                        }
+                        //if (withOscillationGuard && strategy is GuardedStrategy guarded && guarded.GuardSummary.OscillationGuards > 0)
+                        //{
+                        //    var withoutResult = this.SimulateSingle(timeStep, createStrategy, packetSize, dataSet, packetProbability, seed, batteryConfig, false);
+                        //    if (withoutResult.Success)
+                        //    {
+                        //        withoutResult.OscillationGuards = -1;
+                        //        return withoutResult;
+                        //    }
+                        //    else if (withoutResult.StepsSimulated > result.StepsSimulated)
+                        //    {
+                        //        withoutResult.OscillationGuards = -2;
+                        //        return withoutResult;
+                        //    }
+                        //}
                         return result;
                     }
-                    battery.Simulate(timeStep, Power.Zero, dischargePower);
-                }
-                else
-                {
-                    var chargePower = -dischargePower;
-                    if (chargePower > battery.MaximumChargePower)
-                    {
-                        SetResultValues();
-                        result.Success = false;
-                        result.FailReason = BatteryFailReason.ExceedChargePower;
-                        return result;
-                    }
-                    battery.Simulate(timeStep, chargePower, Power.Zero);
-                }
-                step += 1;
 
-                batteryMinSoC = Units.Min(batteryMinSoC, battery.CurrentStateOfCharge);
-                batteryMaxSoC = Units.Max(batteryMaxSoC, battery.CurrentStateOfCharge);
-                batterySoCSum += battery.CurrentStateOfCharge;
-
-                var belowZero = battery.CurrentStateOfCharge <= Energy.Zero;
-                var exceedCapacity = battery.CurrentStateOfCharge >= battery.TotalCapacity;
-                if (belowZero || exceedCapacity)
-                {
-                    SetResultValues();
-                    result.Success = false;
-                    if (belowZero)
-                    {
-                        result.FailReason = BatteryFailReason.BelowZero;
-                    }
-                    else if (exceedCapacity)
-                    {
-                        result.FailReason = BatteryFailReason.ExceedCapacity;
-                    }
-                    return result;
+                    dataPoint += 1;
                 }
 
-                dataPoint += 1;
+                SetResultValues();
+                result.Success = true;
+                //if (withOscillationGuard && strategy is GuardedStrategy g && g.GuardSummary.OscillationGuards > 0)
+                //{
+                //    var withoutResult = this.SimulateSingle(timeStep, createStrategy, packetSize, dataSet, packetProbability, seed, batteryConfig, false);
+                //    if (!withoutResult.Success)
+                //    {
+                //        // strat not successful without oscillation
+                //        result.OscillationGuards *= -10;
+                //    }
+                //}
+                return result;
             }
-
-            SetResultValues();
-            result.Success = true;
-            if (strategy is IDisposable disposable)
-            {
-                disposable.Dispose();
-            }
-            return result;
         }
 
         private static int GetNumberOfCombinations(params IEnumerable[] collections)

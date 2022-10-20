@@ -120,7 +120,7 @@ public class SimpleMpc
             solution.GetVariables(values);
             for (int i = 0; i < steps; i += 1)
             {
-                void Write(LpVariable[] var, [CallerArgumentExpression("var")] string varExpr = null) => Console.Write($"{varExpr}[{i:00}] = {Get(var[i])}, ");
+                void Write(LpVariable[] var, [CallerArgumentExpression("var")] string? varExpr = null) => Console.Write($"{varExpr}[{i:00}] = {Get(var[i])}, ");
                 Write(x);
                 Write(u);
                 Write(s);

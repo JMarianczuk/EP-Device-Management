@@ -9,6 +9,7 @@ using UnitsNet;
 
 using MoreEnumerable = MoreLinq.MoreEnumerable;
 using static MoreLinq.Extensions.CartesianExtension;
+using static MoreLinq.Extensions.TakeUntilExtension;
 
 namespace EpDeviceManagement.Simulation;
 
@@ -19,120 +20,20 @@ public class TestData
         // battery data partly from https://solar.htw-berlin.de/studien/speicher-inspektion-2022/
         return new List<BatteryConfiguration>
         {
-            //new BatteryConfiguration()
-            //{
-            //    Description = "Tesla Powerwall",
-            //    CreateBattery = () => new BatteryElectricStorage(
-            //        Frequency.FromCyclesPerHour(Ratio.FromPercent(3).DecimalFractions / TimeSpan.FromDays(1).TotalHours),
-            //        Ratio.FromPercent(90),
-            //        Ratio.FromPercent(110))
-            //        {
-            //            TotalCapacity = Energy.FromKilowattHours(13.5),
-            //            CurrentStateOfCharge = Energy.FromKilowattHours(6.75),
-            //            MaximumChargePower = Power.FromKilowatts(4.6),
-            //            MaximumDischargePower = Power.FromKilowatts(4.6),
-            //        },
-            //},
-            //new BatteryConfiguration()
-            //{
-            //    Description = "Kostal Piko HVS 7.7", // D1
-            //    CreateBattery = () =>
-            //    {
-            //        //var nominalVoltage = ElectricPotential.FromVolts(307.2);
-            //        //var chargeCurrent = ElectricCurrent.FromAmperes(25);
-            //        //var dischargeCurrent = ElectricCurrent.FromAmperes(25);
-            //        var averageRoundtripEfficiency = Ratio.FromPercent(96.9);
-            //        var averageRoundtripLoss = Ratio.FromPercent(100) - averageRoundtripEfficiency;
-            //        var capacity = Energy.FromKilowattHours(7.68);
-            //        return new BatteryElectricStorage(
-            //            Power.FromWatts(5).DivideBy(capacity),
-            //            Ratio.FromPercent(100) - averageRoundtripLoss / 2,
-            //            Ratio.FromPercent(100) + averageRoundtripLoss / 2)
-            //        {
-            //            TotalCapacity = capacity,
-            //            CurrentStateOfCharge = capacity / 2,
-            //            MaximumChargePower = Power.FromKilowatts(6),
-            //            MaximumDischargePower = Power.FromKilowatts(6),
-            //        };
-            //    },
-            //},
-
-            //new BatteryConfiguration()
-            //{
-            //    Description = "RCT Power Battery 11.5", // G2
-            //    CreateBattery = () =>
-            //    {
-            //        //var nominalVoltage = ElectricPotential.FromVolts(461);
-            //        //var chargeCurrent = ElectricCurrent.FromAmperes(25);
-            //        //var dischargeCurrent = ElectricCurrent.FromAmperes(25);
-            //        var averageRoundtripEfficiency = Ratio.FromPercent(95.6);
-            //        var averageRoundtripLoss = Ratio.FromPercent(100) - averageRoundtripEfficiency;
-            //        var capacity = Energy.FromKilowattHours(10.37);
-            //        return new BatteryElectricStorage(
-            //            Power.FromWatts(10.5).DivideBy(capacity),
-            //            Ratio.FromPercent(100) - averageRoundtripLoss / 2,
-            //            Ratio.FromPercent(100) + averageRoundtripLoss / 2)
-            //        {
-            //            TotalCapacity = capacity,
-            //            CurrentStateOfCharge = capacity / 2,
-            //            MaximumChargePower = Power.FromKilowatts(10.5),
-            //            MaximumDischargePower = Power.FromKilowatts(10.5),
-            //        };
-            //    },
-            //},
-            //new BatteryConfiguration()
-            //{
-            //    Description = "Fenecon Home", // I1
-            //    CreateBattery = () =>
-            //    {
-            //        var averageRoundtripEfficiency = Ratio.FromPercent(95.5);
-            //        var averageRoundtripLoss = Ratio.FromPercent(100) - averageRoundtripEfficiency;
-            //        var capacity = Energy.FromKilowattHours(16.1);
-            //        return new BatteryElectricStorage(
-            //            Power.FromWatts(20.5).DivideBy(capacity),
-            //            Ratio.FromPercent(100) - averageRoundtripLoss / 2,
-            //            Ratio.FromPercent(100) + averageRoundtripLoss / 2)
-            //        {
-            //            TotalCapacity = capacity,
-            //            CurrentStateOfCharge = capacity / 2,
-            //            MaximumChargePower = Power.FromKilowatts(7.84),
-            //            MaximumDischargePower = Power.FromKilowatts(7.84),
-            //        };
-            //    },
-            //},
-            //new BatteryConfiguration()
-            //{
-            //    Description = "Solax T-Bat H 23", // L1
-            //    CreateBattery = () =>
-            //    {
-            //        var averageRoundtripEfficiency = Ratio.FromPercent(94.7);
-            //        var averageRoundtripLoss = Ratio.FromPercent(100) - averageRoundtripEfficiency;
-            //        var capacity = Energy.FromKilowattHours(20.6);
-            //        return new BatteryElectricStorage(
-            //            Power.FromWatts(37).DivideBy(capacity),
-            //            Ratio.FromPercent(100) - averageRoundtripLoss / 2,
-            //            Ratio.FromPercent(100) + averageRoundtripLoss / 2)
-            //        {
-            //            TotalCapacity = capacity,
-            //            CurrentStateOfCharge = capacity / 2,
-            //            MaximumChargePower = Power.FromKilowatts(13.8),
-            //            MaximumDischargePower = Power.FromKilowatts(13.8),
-            //        };
-            //    },
-            //},
-
             new BatteryConfiguration()
             {
                 Description = "10 kWh",
                 CreateBattery = () =>
                 {
                     var avgRoundTripEfficiency = Ratio.FromPercent(95);
-                    var avgRoundTripLoss = Ratio.FromPercent(100) - avgRoundTripEfficiency;
+                    var dischargeEfficiency =
+                        Ratio.FromDecimalFractions(2d / (avgRoundTripEfficiency.DecimalFractions + 1));
+                    var chargeEfficiency = Ratio.FromPercent(200) - dischargeEfficiency;
                     var capacity = Energy.FromKilowattHours(10);
-                    return new BatteryElectricStorage(
-                        Power.FromWatts(20).DivideBy(capacity),
-                        Ratio.FromPercent(100) - avgRoundTripLoss / 2,
-                        Ratio.FromPercent(100) + avgRoundTripLoss / 2)
+                    return new BatteryElectricStorage2(
+                        Power.FromWatts(20),
+                        chargeEfficiency,
+                        dischargeEfficiency)
                     {
                         TotalCapacity = capacity,
                         CurrentStateOfCharge = capacity / 2,
@@ -147,12 +48,14 @@ public class TestData
                 CreateBattery = () =>
                 {
                     var avgRoundTripEfficiency = Ratio.FromPercent(95);
-                    var avgRoundTripLoss = Ratio.FromPercent(100) - avgRoundTripEfficiency;
+                    var dischargeEfficiency =
+                        Ratio.FromDecimalFractions(2d / (avgRoundTripEfficiency.DecimalFractions + 1));
+                    var chargeEfficiency = Ratio.FromPercent(200) - dischargeEfficiency;
                     var capacity = Energy.FromKilowattHours(15);
-                    return new BatteryElectricStorage(
-                        Power.FromWatts(20).DivideBy(capacity),
-                        Ratio.FromPercent(100) - avgRoundTripLoss / 2,
-                        Ratio.FromPercent(100) + avgRoundTripLoss / 2)
+                    return new BatteryElectricStorage2(
+                        Power.FromWatts(20),
+                        chargeEfficiency,
+                        dischargeEfficiency)
                     {
                         TotalCapacity = capacity,
                         CurrentStateOfCharge = capacity / 2,
@@ -164,13 +67,13 @@ public class TestData
         };
     }
 
-    public static IList<Func<Configuration, IEpDeviceController>> GetStrategies()
+    public static IList<Simulator.CreateStrategy> GetStrategies()
     {
-        var strategies = new List<Func<Configuration, IEpDeviceController>>()
+        var strategies = new List<Simulator.CreateStrategy>()
         {
-            config => new AlwaysRequestIncomingPackets(config.Battery, config.PacketSize),
-            config => new AlwaysRequestOutgoingPackets(config.Battery, config.PacketSize),
-            config => new NoExchangeWithTheCell(),
+            (config, o) => new AlwaysRequestIncomingPackets(config.Battery, config.PacketSize),
+            (config, o) => new AlwaysRequestOutgoingPackets(config.Battery, config.PacketSize),
+            (config, o) => new NoExchangeWithTheCell(),
         };
 
         for (double left = 0.1d; left <= 0.9d; left += 0.1d)
@@ -178,36 +81,33 @@ public class TestData
             for (double right = left; right <= 0.9d; right += 0.1d)
             {
                 var (lower, upper) = (Ratio.FromDecimalFractions(left), Ratio.FromDecimalFractions(right));
-                strategies.Add(config => new AimForSpecificBatteryRange(
-                    config.Battery,
-                    config.PacketSize,
-                    lower,
-                    upper));
-                strategies.Add(config => new ProbabilisticModelingControl(
+                strategies.Add((config, o) => new AimForSpecificBatteryRange(
                     config.Battery,
                     config.PacketSize,
                     lower,
                     upper,
-                    config.Random));
-                strategies.Add(config => new LinearProbabilisticFunctionControl(
+                    o));
+                strategies.Add((config, o) => new ProbabilisticModelingControl(
                     config.Battery,
                     config.PacketSize,
                     lower,
                     upper,
-                    config.Random));
-                strategies.Add(config => new LinearProbabilisticEstimationFunctionControl(
+                    config.Random,
+                    o));
+                strategies.Add((config, o) => new LinearProbabilisticFunctionControl(
                     config.Battery,
                     config.PacketSize,
                     lower,
                     upper,
-                    config.Random));
-                //strategies.Add(config => new NonLinearProbabilisticFunctionControl(
-                //    config.Battery,
-                //    config.PacketSize,
-                //    lower,
-                //    upper,
-                //    config.Random,
-                //    TimeSpan.FromMinutes(30)));
+                    config.Random,
+                    o));
+                strategies.Add((config, o) => new LinearProbabilisticEstimationFunctionControl(
+                    config.Battery,
+                    config.PacketSize,
+                    lower,
+                    upper,
+                    config.Random,
+                    o));
             }
         }
 
@@ -228,7 +128,7 @@ public class TestData
         }
         foreach (var horizon in Enumerable.Range(1, 8).Select(x => TimeSpan.FromHours(x)))
         {
-            strategies.Add(config =>
+            strategies.Add((config, o) =>
             {
                 var ds = config.DataSet;
                 var fuzzyFactor = 0.2;
@@ -255,44 +155,10 @@ public class TestData
                     horizon,
                     loadsPredictor,
                     generationPredictor,
-                    nameof(PerfectFuzzyPredictor<Power>));
+                    nameof(PerfectFuzzyPredictor<Power>),
+                    o);
                 return strategy;
             });
-            //for (var targetBatteryState = 0.1d; targetBatteryState <= 0.9d; targetBatteryState += 0.1d)
-            //for (var targetBatteryState = 0.4d; targetBatteryState <= 0.6d; targetBatteryState += 0.1d)
-            //{
-            //    var tbs = Ratio.FromDecimalFractions(targetBatteryState);
-            //    strategies.Add(config =>
-            //    {
-            //        var ds = config.DataSet;
-            //        var fuzzyFactor = 0.2;
-            //        var fuzzyOffset = Power.FromKilowatts(0.1);
-
-            //        var (loads, generation) = GetOrCreate(ds);
-            //        var loadsPredictor = new PerfectFuzzyPredictor<Power>(
-            //            loads,
-            //            p => p.Kilowatts,
-            //            kw => Power.FromKilowatts(kw),
-            //            fuzzyFactor,
-            //            fuzzyOffset,
-            //            config.Random);
-            //        var generationPredictor = new PerfectFuzzyPredictor<Power>(
-            //            generation,
-            //            p => p.Kilowatts,
-            //            kw => Power.FromKilowatts(kw),
-            //            fuzzyFactor,
-            //            fuzzyOffset,
-            //            config.Random);
-            //        var mpc = new ModelPredictiveController2(
-            //            config.Battery as BatteryElectricStorage,
-            //            config.PacketSize,
-            //            tbs,
-            //            loadsPredictor,
-            //            generationPredictor,
-            //            horizon);
-            //        return mpc;
-            //    });
-            //}
         }
 
         return strategies;
@@ -312,10 +178,24 @@ public class TestData
     {
         return MoreEnumerable
             .Generate(0.1d, x => x + 0.1d)
-            .Take(9)
-            .Concat(MoreEnumerable
-                .Generate(1d, x => x + 0.5)
-                .Take(10))
+            .TakeUntil(x => x > 4.5)
+            //.Concat(MoreEnumerable
+            //    .Generate(1d, x => x + 0.5)
+            //    .Take(10))
+            //// add interesting sections
+            //.Concat(MoreEnumerable
+            //    .Generate(2.1d, x => x + 0.1d)
+            //    .Take(4))
+            //.Concat(MoreEnumerable
+            //    .Generate(3.1, x => x + 0.1d)
+            //    .Take(4))
+            //.Concat(MoreEnumerable
+            //    .Generate(3.6, x => x + 0.1d)
+            //    .Take(4))
+            //.Concat(MoreEnumerable
+            //    .Generate(4.1, x => x + 0.1d)
+            //    .Take(4))
+            //.OrderBy(x => x)
             .Select(x => Energy.FromKilowattHours(x))
             .ToList();
     }
@@ -323,10 +203,8 @@ public class TestData
     public static IList<Ratio> GetPacketProbabilities()
     {
         return MoreEnumerable
-            .Sequence(10, 90, 10)
+            .Sequence(5, 95, 5)
             .Select(x => (double)x)
-            .Prepend(5)
-            .Append(95)
             .Append(98)
             .Append(99.5)
             .Select(x => Ratio.FromPercent(x))
@@ -518,55 +396,5 @@ public class TestData
         }
 
         return result;
-    }
-
-    public static async Task AnalyzeAsync()
-    {
-        var (data, handle) = new ReadDataFromCsv().ReadAsync();
-        
-        Power Min(Power left, Power right) => Power.FromKilowatts(Math.Min(left.Kilowatts, right.Kilowatts));
-        Power Max(Power left, Power right) => Power.FromKilowatts(Math.Max(left.Kilowatts, right.Kilowatts));
-
-        var timeStep = TimeSpan.FromMinutes(15);
-        var enhanced = await EnhanceAsync(data, timeStep, new NoProgress());
-
-        Power maxPower = Power.FromKilowatts(1000000);
-        Power minPower = Power.FromKilowatts(-1000000);
-        var (dish_min, dish_max) = (maxPower, minPower);
-        var (freeze_min, freeze_max) = (maxPower, minPower);
-        var (heat_min, heat_max) = (maxPower, minPower);
-        var (wash_min, wash_max) = (maxPower, minPower);
-        var (pv_min, pv_max) = (maxPower, minPower);
-        foreach (var entry in enhanced)
-        {
-            //var dish_power = entry.Residential1_Dishwasher;
-            //dish_min = Min(dish_min, dish_power);
-            //dish_max = Max(dish_max, dish_power);
-
-            //var freeze_power = entry.Residential1_Freezer;
-            //freeze_min = Min(freeze_min, freeze_power);
-            //freeze_max = Max(freeze_max, freeze_power);
-
-            //var heat_power = entry.Residential1_HeatPump;
-            //heat_min = Min(heat_min, heat_power);
-            //heat_max = Max(heat_max, heat_power);
-
-            //var wash_power = entry.Residential1_WashingMachine;
-            //wash_min = Min(wash_min, wash_power);
-            //wash_max = Max(wash_max, wash_power);
-
-            //var pv_power = entry.Residential1_PV;
-            //pv_min = Min(pv_min, pv_power);
-            //pv_max = Max(pv_max, pv_power);
-        }
-
-        Console.WriteLine("Stats:");
-        Console.WriteLine($"Dishwasher: [{dish_min}, {dish_max}]");
-        Console.WriteLine($"Freezer: [{freeze_min}, {freeze_max}]");
-        Console.WriteLine($"Heat pump: [{heat_min}, {heat_max}]");
-        Console.WriteLine($"Washing machine: [{wash_min}, {wash_max}]");
-        Console.WriteLine($"Photovoltaic: [{pv_min}, {pv_max}]");
-
-        handle.Dispose();
     }
 }

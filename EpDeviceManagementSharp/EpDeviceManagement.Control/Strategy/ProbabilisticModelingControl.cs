@@ -25,11 +25,12 @@ public class ProbabilisticModelingControl : GuardedStrategy, IEpDeviceController
         Energy packetSize,
         Ratio probabilisticModeLowerLevel,
         Ratio probabilisticModeUpperLevel,
-        RandomNumberGenerator random)
+        RandomNumberGenerator random,
+        bool withOscillationGuard)
         : base(
             new BatteryCapacityGuard(battery, packetSize),
             new BatteryPowerGuard(battery, packetSize),
-            new OscillationGuard())
+            withOscillationGuard ? new OscillationGuard() : DummyGuard.Instance)
     {
         Battery = battery;
         this.random = random;
