@@ -29,6 +29,10 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EpDeviceManagement.Data.Gen
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EpDeviceManagement.Data.Generation.Abstractions", "EpDeviceManagement.Data.Generation.Abstractions\EpDeviceManagement.Data.Generation.Abstractions.csproj", "{1B564F94-2216-4010-8CB7-98B47AB8379D}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EpDeviceManagement.Linux", "EpDeviceManagement.Linux\EpDeviceManagement.Linux.csproj", "{0A405468-D2F9-4519-86D0-62359991EF0C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EpDeviceManagementSharp.Formulation", "EpDeviceManagementSharp.Formulation\EpDeviceManagementSharp.Formulation.csproj", "{7A4323FF-BBA2-4930-8965-38848E0F6047}"
+EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EpDeviceManagement.Simulation", "EpDeviceManagement.Simulation\EpDeviceManagement.Simulation.csproj", "{CFD4BCFF-47D1-41C2-929D-A71DCAE074E6}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EpDeviceManagement.Simulation.Tests", "EpDeviceManagement.Simulation.Tests\EpDeviceManagement.Simulation.Tests.csproj", "{1BD6134E-4451-4018-AAF3-D66D8BDE9183}"
@@ -93,6 +97,14 @@ Global
 		{1B564F94-2216-4010-8CB7-98B47AB8379D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{1B564F94-2216-4010-8CB7-98B47AB8379D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{1B564F94-2216-4010-8CB7-98B47AB8379D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0A405468-D2F9-4519-86D0-62359991EF0C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0A405468-D2F9-4519-86D0-62359991EF0C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0A405468-D2F9-4519-86D0-62359991EF0C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0A405468-D2F9-4519-86D0-62359991EF0C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7A4323FF-BBA2-4930-8965-38848E0F6047}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7A4323FF-BBA2-4930-8965-38848E0F6047}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7A4323FF-BBA2-4930-8965-38848E0F6047}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7A4323FF-BBA2-4930-8965-38848E0F6047}.Release|Any CPU.Build.0 = Release|Any CPU
 		{CFD4BCFF-47D1-41C2-929D-A71DCAE074E6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{CFD4BCFF-47D1-41C2-929D-A71DCAE074E6}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{CFD4BCFF-47D1-41C2-929D-A71DCAE074E6}.Release|Any CPU.ActiveCfg = Release|Any CPU

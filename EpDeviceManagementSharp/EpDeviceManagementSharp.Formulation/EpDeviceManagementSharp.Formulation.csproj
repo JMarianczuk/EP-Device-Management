@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net6.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <PackageReference Include="BenchmarkDotNet" Version="0.13.1" />
+      <PackageReference Include="LpSolveDotNet" Version="4.0.0" />
+      <PackageReference Include="UnitsNet" Version="4.145.0" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\EpDeviceManagement.Control\EpDeviceManagement.Control.csproj" />
+      <ProjectReference Include="..\EpDeviceManagement.Simulation.Heating\EpDeviceManagement.Simulation.Heating.csproj" />
+      <ProjectReference Include="..\EpDeviceManagement.Simulation.Storage\EpDeviceManagement.Simulation.Storage.csproj" />
+      <ProjectReference Include="..\EpDeviceManagement\EpDeviceManagement.csproj" />
+      <ProjectReference Include="..\LpSolverBuilder\LpSolverBuilder.csproj" />
+    </ItemGroup>
+
+</Project>

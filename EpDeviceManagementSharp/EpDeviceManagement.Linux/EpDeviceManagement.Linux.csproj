@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>net6.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <PackageReference Include="LpSolveDotNet.Native.linux-x64" Version="4.0.0" />
+      <PackageReference Include="UnitsNet" Version="4.145.0" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\EpDeviceManagementSharp.Formulation\EpDeviceManagementSharp.Formulation.csproj" />
+    </ItemGroup>
+
+</Project>
