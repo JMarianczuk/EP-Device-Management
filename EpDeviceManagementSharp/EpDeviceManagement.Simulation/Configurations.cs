@@ -75,11 +75,7 @@ public class SimulationResult
 
     public double TotalKilowattHoursGenerationMissed { get; set; }
 
-    public int PowerGuards { get; set; }
-
-    public int CapacityGuards { get; set; }
-
-    public int OscillationGuards { get; set; }
+    public IGuardSummary GuardSummary { get; set; }
 }
 
 public enum BatteryFailReason

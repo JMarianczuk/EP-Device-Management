@@ -1,4 +1,5 @@
-﻿using EpDeviceManagement.Contracts;
+﻿using System.Runtime.CompilerServices;
+using EpDeviceManagement.Contracts;
 using EpDeviceManagement.Control.Contracts;
 using EpDeviceManagement.Control.Strategy.Guards;
 
@@ -19,45 +20,62 @@ public abstract class GuardedStrategy : IEpDeviceController
 
     private bool CanRequestIncoming(TimeSpan timeStep, IEnumerable<ILoad> loads, IEnumerable<IGenerator> generators)
     {
+        var result = true;
         foreach (var g in guards)
         {
             if (!g.CanRequestIncoming(timeStep, loads, generators))
             {
                 this.IncrementGuardCounter(g);
-                return false;
+                // do not return here just yet, we wish to capture all the guards, not primarily the ones with precedence
+                result = false;
             }
         }
-        return true;
-    }
-
-    private void IncrementGuardCounter(IControlGuard guard)
-    {
-        switch (guard)
-        {
-            case BatteryPowerGuard:
-                this.guardSummary.PowerGuards += 1;
-                break;
-            case BatteryCapacityGuard:
-                this.guardSummary.CapacityGuards += 1;
-                break;
-            case OscillationGuard:
-                this.guardSummary.OscillationGuards += 1;
-                break;
-        }
+        return result;
     }
 
     private bool CanRequestOutgoing(TimeSpan timeStep, IEnumerable<ILoad> loads, IEnumerable<IGenerator> generators)
     {
+        var result = true;
         foreach (var g in this.guards)
         {
             if (!g.CanRequestOutgoing(timeStep, loads, generators))
             {
                 this.IncrementGuardCounter(g);
-                return false;
+                result = false;
             }
         }
+        return result;
+    }
 
-        return true;
+    private void IncrementGuardCounter(IControlGuard guard, [CallerMemberName] string? caller = null)
+    {
+        bool incoming = caller != nameof(CanRequestOutgoing);
+        switch (guard)
+        {
+            case BatteryPowerGuard:
+                if (incoming)
+                {
+                    this.guardSummary.IncomingPowerGuards += 1;
+                }
+                else
+                {
+                    this.guardSummary.OutgoingPowerGuards += 1;
+                }
+                break;
+            case BatteryCapacityGuard:
+                if (incoming)
+                {
+                    this.guardSummary.FullCapacityGuards += 1;
+                }
+                else
+                {
+                    this.guardSummary.EmptyCapacityGuards += 1;
+                }
+                break;
+            case OscillationGuard:
+                this.guardSummary.OscillationGuards += 1;
+                break;
+        }
     }
 
     private void ReportLastTransfer(TransferResult lastTransferResult)
@@ -114,9 +132,13 @@ public abstract class GuardedStrategy : IEpDeviceController
 
     private class GuardSummaryImpl : IGuardSummary
     {
-        public int PowerGuards { get; set; }
+        public int IncomingPowerGuards { get; set; }
 
-        public int CapacityGuards { get; set; }
+        public int OutgoingPowerGuards { get; set; }
+
+        public int EmptyCapacityGuards { get; set; }
+
+        public int FullCapacityGuards { get; set; }
 
         public int OscillationGuards { get; set; }
     }

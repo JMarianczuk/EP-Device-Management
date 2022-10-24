@@ -69,11 +69,9 @@ namespace EpDeviceManagement.Simulation
             IProducerConsumerCollection<SimulationResult> results = new ConcurrentQueue<SimulationResult>();
             using var cts = new CancellationTokenSource();
             var token = cts.Token;
-            async Task WriteEntry(TextWriter streamWriter, SimulationResult simulationResult)
+            static Task WriteEntry(TextWriter streamWriter, SimulationResult simulationResult)
             {
-                string Invariant(ref DefaultInterpolatedStringHandler handler) =>
-                    string.Create(CultureInfo.InvariantCulture, ref handler);
-                await streamWriter.WriteLineAsync(string.Join('\t',
+                return streamWriter.WriteLineAsync(string.Join('\t',
                     "RESULT",
                     $"strategy={simulationResult.StrategyName}",
                     $"configuration={simulationResult.StrategyConfiguration}",
@@ -83,22 +81,24 @@ namespace EpDeviceManagement.Simulation
                     $"batteryMin={simulationResult.BatteryMinSoC}",
                     $"batteryMax={simulationResult.BatteryMaxSoC}",
                     $"batteryAvg={simulationResult.BatteryAvgSoC}",
-                    Invariant(
-                        $"packetSize={simulationResult.PacketSize.KilowattHours:#.#}"),
-                    Invariant(
+                    string.Create(CultureInfo.InvariantCulture,
+                        $"packetSize={simulationResult.PacketSize.KilowattHours:0.00#}"),
+                    string.Create(CultureInfo.InvariantCulture,
                         $"probability={simulationResult.PacketProbability.DecimalFractions:0.###'}"),
                     $"timeStep={simulationResult.TimeStep}",
                     $"success={simulationResult.Success}",
                     $"fail={simulationResult.FailReason}",
-                    $"powerGuards={simulationResult.PowerGuards}",
-                    $"capacityGuards={simulationResult.CapacityGuards}",
-                    $"oscillationGuards={simulationResult.OscillationGuards}",
+                    $"incomingPowerGuards={simulationResult.GuardSummary?.IncomingPowerGuards ?? 0}",
+                    $"outgoingPowerGuards={simulationResult.GuardSummary?.OutgoingPowerGuards ?? 0}",
+                    $"emptyCapacityGuards={simulationResult.GuardSummary?.EmptyCapacityGuards ?? 0}",
+                    $"fullCapacityGuards={simulationResult.GuardSummary?.FullCapacityGuards ?? 0}",
+                    $"oscillationGuards={simulationResult.GuardSummary?.OscillationGuards ?? 0}",
                     $"steps={simulationResult.StepsSimulated}",
-                    Invariant(
+                    string.Create(CultureInfo.InvariantCulture,
                         $"energy_kwh_in={simulationResult.TotalKilowattHoursIncoming}"),
-                    Invariant(
+                    string.Create(CultureInfo.InvariantCulture,
                         $"energy_kwh_out={simulationResult.TotalKilowattHoursOutgoing}"),
-                    Invariant(
+                    string.Create(CultureInfo.InvariantCulture,
                         $"generationMissed_kwh={simulationResult.TotalKilowattHoursGenerationMissed}"),
                     $"seed={simulationResult.Seed}"));
             }
@@ -113,9 +113,16 @@ namespace EpDeviceManagement.Simulation
                 await using (var stream = new FileStream(resultsFileName, FileMode.OpenOrCreate, FileAccess.Write, FileShare.ReadWrite))
                 await using (var writer = new StreamWriter(stream))
                 {
+                    var previousTimes = new (int numberOfCombinations, TimeSpan time)[]
+                    {
+                        ( 4_066_020, TimeSpan.FromHours(3) + TimeSpan.FromMinutes(30) )
+                    };
+                    var prevTime = previousTimes[0];
+                    var factor = (double) numberOfCombinations / prevTime.numberOfCombinations;
+                    var estimatedTime = prevTime.time * factor;
                     progress.Setup(
                         numberOfCombinations,
-                        "Running the simulation");
+                        $"Running the simulation ({numberOfCombinations} combinations, estimated to take {estimatedTime.Humanize(precision: 2)}, ETA {DateTime.Now.Add(estimatedTime):HH:mm:ss})");
                     while (true)
                     {
                         if (token.IsCancellationRequested)
@@ -189,7 +196,7 @@ namespace EpDeviceManagement.Simulation
             await writeTask;
 
             var elapsed = DateTime.Now - beforeSimulation;
-            Console.WriteLine($"simulating took {elapsed.Humanize(precision: 2)} ({elapsed})");
+            Console.WriteLine($"simulating took {elapsed.Humanize(precision: 2)} ({elapsed}) and finished at {DateTime.Now:HH:mm:ss}");
         }
 
         public delegate IEpDeviceController CreateStrategy(
@@ -216,6 +223,16 @@ namespace EpDeviceManagement.Simulation
                 DataSet = dataSet,
             };
             var strategy = createStrategy(strategyConfig);
+#if DEBUG
+            if (strategy is DirectionAwareLinearProbabilisticFunctionControl)
+            {
+                int p = 5;
+            }
+            else
+            {
+                return new SimulationResult();
+            }
+#endif
             using (strategy as IDisposable)
             {
                 var loads = new[]
@@ -244,7 +261,7 @@ namespace EpDeviceManagement.Simulation
                     StrategyConfiguration = strategy.Configuration,
                     StrategyPrettyConfiguration = strategy.PrettyConfiguration,
                     DataConfiguration = dataSet.Configuration,
-                    BatteryConfiguration = $"{batteryConfig.Description} [{battery.TotalCapacity}]",
+                    BatteryConfiguration = $"{batteryConfig.Description}",
                     Seed = seed,
                 };
                 double totalKwhIn = 0;
@@ -267,9 +284,7 @@ namespace EpDeviceManagement.Simulation
                         : battery.CurrentStateOfCharge;
                     if (strategy is GuardedStrategy guarded)
                     {
-                        result.PowerGuards = guarded.GuardSummary.PowerGuards;
-                        result.CapacityGuards = guarded.GuardSummary.CapacityGuards;
-                        result.OscillationGuards = guarded.GuardSummary.OscillationGuards;
+                        result.GuardSummary = guarded.GuardSummary;
                     }
                 }
 

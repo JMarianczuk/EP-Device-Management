@@ -2,9 +2,13 @@
 
 public interface IGuardSummary
 {
-    public int PowerGuards { get; }
+    public int IncomingPowerGuards { get; }
 
-    public int CapacityGuards { get; }
+    public int OutgoingPowerGuards { get; }
+
+    public int EmptyCapacityGuards { get; }
+
+    public int FullCapacityGuards { get; }
 
     public int OscillationGuards { get; }
 }
