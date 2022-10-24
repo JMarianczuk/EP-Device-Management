@@ -29,10 +29,20 @@ public class LinearProbabilisticEstimationFunctionControl : LinearProbabilisticF
         IEnumerable<IGenerator> generators,
         TransferResult lastTransferResult)
     {
+        this.assumedCurrentBatterySoC = CalculateAssumedCurrentBatterySoC(timeStep, loads, generators, this.Battery.CurrentStateOfCharge);
+        return base.DoUnguardedControl(dataPoint, timeStep, loads, generators, lastTransferResult);
+    }
+
+    public static Energy CalculateAssumedCurrentBatterySoC(
+        TimeSpan timeStep,
+        IEnumerable<ILoad> loads,
+        IEnumerable<IGenerator> generators,
+        Energy actualCurrentStateOfCharge)
+    {
         var l = loads.Select(x => x.CurrentDemand).Sum();
         var g = generators.Select(x => x.CurrentGeneration).Sum();
         var net = l - g;
-        this.assumedCurrentBatterySoC = this.Battery.CurrentStateOfCharge - (net * timeStep);
-        return base.DoUnguardedControl(dataPoint, timeStep, loads, generators, lastTransferResult);
+        var batteryCurrentStateOfCharge = actualCurrentStateOfCharge - (net * timeStep);
+        return batteryCurrentStateOfCharge;
     }
 }

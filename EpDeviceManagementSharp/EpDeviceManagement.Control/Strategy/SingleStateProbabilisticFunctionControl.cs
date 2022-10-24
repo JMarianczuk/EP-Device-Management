@@ -15,7 +15,7 @@ public abstract class SingleStateProbabilisticFunctionControl : GuardedStrategy,
     private readonly Ratio upperLevel;
     private readonly RandomNumberGenerator random;
 
-    public SingleStateProbabilisticFunctionControl(
+    protected SingleStateProbabilisticFunctionControl(
         IStorage battery,
         Energy packetSize,
         Ratio lowerLevel,
@@ -31,6 +31,7 @@ public abstract class SingleStateProbabilisticFunctionControl : GuardedStrategy,
         this.upperLevel = upperLevel;
         this.random = random;
         this.Battery = battery;
+        PacketSize = packetSize;
 
         this.LowerLimit = battery.TotalCapacity * lowerLevel.DecimalFractions;
         this.UpperLimit = battery.TotalCapacity * upperLevel.DecimalFractions;
@@ -38,7 +39,9 @@ public abstract class SingleStateProbabilisticFunctionControl : GuardedStrategy,
     }
 
     protected IStorage Battery { get; }
-    
+
+    protected Energy PacketSize { get; }
+
     protected Energy LowerLimit { get; }
     
     protected Energy UpperLimit { get; }
@@ -116,16 +119,4 @@ public abstract class SingleStateProbabilisticFunctionControl : GuardedStrategy,
     protected abstract double GetProbabilityForLowerHalf(TimeSpan timeStep);
 
     protected abstract double GetProbabilityForUpperHalf(TimeSpan timeStep);
-
-    private double GetRelativePositionInInterval(Energy upperLimit, Energy lowerLimit)
-    {
-        var range = upperLimit - lowerLimit;
-        var positionInRange = this.Battery.CurrentStateOfCharge - lowerLimit;
-        var relativePosition = positionInRange / range;
-        return relativePosition;
-        //var meanTimeToResponse = TimeSpan.FromMinutes(30);
-        //var mu = (this.upperLimit - this.Battery.CurrentStateOfCharge) /
-        //         (this.Battery.CurrentStateOfCharge - this.lowerLimit);
-        //return Math.Exp(mu * (timeStep / meanTimeToResponse));
-    }
 }

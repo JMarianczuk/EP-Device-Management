@@ -22,7 +22,7 @@ public class TestData
         {
             new BatteryConfiguration()
             {
-                Description = "10 kWh",
+                Description = "10 kWh [10 kW]",
                 CreateBattery = () =>
                 {
                     var avgRoundTripEfficiency = Ratio.FromPercent(95);
@@ -44,7 +44,7 @@ public class TestData
             },
             new BatteryConfiguration()
             {
-                Description = "15 kWh",
+                Description = "15 kWh [15 kW]",
                 CreateBattery = () =>
                 {
                     var avgRoundTripEfficiency = Ratio.FromPercent(95);
@@ -108,57 +108,23 @@ public class TestData
                     upper,
                     config.Random,
                     o));
+                for (int packetPortionPercent = 0; packetPortionPercent <= (left == right ? 0 : 5); packetPortionPercent += 1)
+                {
+                    foreach (var withEstimation in new[] { true, false })
+                    {
+                        var portion = Ratio.FromPercent(packetPortionPercent);
+                        strategies.Add((config, o) => new DirectionAwareLinearProbabilisticFunctionControl(
+                            config.Battery,
+                            config.PacketSize,
+                            lower,
+                            upper,
+                            portion,
+                            withEstimation,
+                            config.Random,
+                            o));
+                    }
+                }
             }
-        }
-
-        IDictionary<DataSet, (IReadOnlyList<Power> loads, IReadOnlyList<Power> generation)> predictionsCache =
-            new ConcurrentDictionary<DataSet, (IReadOnlyList<Power>, IReadOnlyList<Power>)>();
-
-        (IReadOnlyList<Power> loads, IReadOnlyList<Power> generation) GetOrCreate(DataSet ds)
-        {
-            if (!predictionsCache.TryGetValue(ds, out var tuple))
-            {
-                var l = ds.Data.Select(ds.GetLoadsTotalPower).ToList();
-                var g = ds.Data.Select(ds.GetGeneratorsTotalPower).ToList();
-                predictionsCache[ds] = (l, g);
-                tuple = (l, g);
-            }
-
-            return tuple;
-        }
-        foreach (var horizon in Enumerable.Range(1, 8).Select(x => TimeSpan.FromHours(x)))
-        {
-            strategies.Add((config, o) =>
-            {
-                var ds = config.DataSet;
-                var fuzzyFactor = 0.2;
-                var fuzzyOffset = Power.FromKilowatts(0.1);
-
-                var (loads, generation) = GetOrCreate(ds);
-                var loadsPredictor = new PerfectFuzzyPredictor<Power>(
-                    loads,
-                    p => p.Kilowatts,
-                    kw => Power.FromKilowatts(kw),
-                    fuzzyFactor,
-                    fuzzyOffset,
-                    config.Random);
-                var generationPredictor = new PerfectFuzzyPredictor<Power>(
-                    generation,
-                    p => p.Kilowatts,
-                    kw => Power.FromKilowatts(kw),
-                    fuzzyFactor,
-                    fuzzyOffset,
-                    config.Random);
-                var strategy = new SimplePredictiveControl(
-                    config.Battery,
-                    config.PacketSize,
-                    horizon,
-                    loadsPredictor,
-                    generationPredictor,
-                    nameof(PerfectFuzzyPredictor<Power>),
-                    o);
-                return strategy;
-            });
         }
 
         return strategies;
@@ -179,23 +145,28 @@ public class TestData
         return MoreEnumerable
             .Generate(0.1d, x => x + 0.1d)
             .TakeUntil(x => x > 4.5)
-            //.Concat(MoreEnumerable
-            //    .Generate(1d, x => x + 0.5)
-            //    .Take(10))
             //// add interesting sections
-            //.Concat(MoreEnumerable
-            //    .Generate(2.1d, x => x + 0.1d)
-            //    .Take(4))
-            //.Concat(MoreEnumerable
-            //    .Generate(3.1, x => x + 0.1d)
-            //    .Take(4))
-            //.Concat(MoreEnumerable
-            //    .Generate(3.6, x => x + 0.1d)
-            //    .Take(4))
-            //.Concat(MoreEnumerable
-            //    .Generate(4.1, x => x + 0.1d)
-            //    .Take(4))
-            //.OrderBy(x => x)
+            .Concat(new []
+            {
+                2.45,
+                2.48,
+                2.49,
+                2.505,
+                2.51,
+                2.515,
+                2.52,
+                2.55,
+            })
+            .Concat(new []
+            {
+                3.73,
+                3.74,
+                3.75,
+                3.755,
+                3.76,
+                3.765,
+                3.77,
+            })
             .Select(x => Energy.FromKilowattHours(x))
             .ToList();
     }

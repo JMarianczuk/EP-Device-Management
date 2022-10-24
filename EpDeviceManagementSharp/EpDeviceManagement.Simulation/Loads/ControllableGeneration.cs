@@ -13,4 +13,9 @@ public class ControllableGeneration : IControllableGenerator
     {
         this.IsGenerating = false;
     }
+
+    public override string ToString()
+    {
+        return $"Gen: {this.CurrentGeneration}";
+    }
 }
