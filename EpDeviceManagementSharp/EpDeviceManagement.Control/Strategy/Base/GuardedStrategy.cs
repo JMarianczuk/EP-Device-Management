@@ -7,10 +7,11 @@ namespace EpDeviceManagement.Control.Strategy.Base;
 
 public abstract class GuardedStrategy : IEpDeviceController
 {
-    private readonly IEnumerable<IControlGuard> guards;
+    private readonly IControlGuard[] guards;
     private readonly GuardSummaryImpl guardSummary;
 
-    protected GuardedStrategy(params IControlGuard[] guards)
+    protected GuardedStrategy(
+        params IControlGuard[] guards)
     {
         this.guards = guards;
         this.guardSummary = new GuardSummaryImpl();
@@ -18,7 +19,7 @@ public abstract class GuardedStrategy : IEpDeviceController
 
     public IGuardSummary GuardSummary => this.guardSummary;
 
-    private bool CanRequestIncoming(TimeSpan timeStep, IEnumerable<ILoad> loads, IEnumerable<IGenerator> generators)
+    private bool CanRequestIncoming(TimeSpan timeStep, ILoad[] loads, IGenerator[] generators)
     {
         var result = true;
         foreach (var g in guards)
@@ -33,7 +34,7 @@ public abstract class GuardedStrategy : IEpDeviceController
         return result;
     }
 
-    private bool CanRequestOutgoing(TimeSpan timeStep, IEnumerable<ILoad> loads, IEnumerable<IGenerator> generators)
+    private bool CanRequestOutgoing(TimeSpan timeStep, ILoad[] loads, IGenerator[] generators)
     {
         var result = true;
         foreach (var g in this.guards)
@@ -95,15 +96,15 @@ public abstract class GuardedStrategy : IEpDeviceController
     protected abstract ControlDecision DoUnguardedControl(
         int dataPoint,
         TimeSpan timeStep,
-        IEnumerable<ILoad> loads,
-        IEnumerable<IGenerator> generators,
+        ILoad[] loads,
+        IGenerator[] generators,
         TransferResult lastTransferResult);
 
     public ControlDecision DoControl(
         int dataPoint,
         TimeSpan timeStep,
-        IEnumerable<ILoad> loads,
-        IEnumerable<IGenerator> generators,
+        ILoad[] loads,
+        IGenerator[] generators,
         TransferResult lastTransferResult)
     {
         this.ReportLastTransfer(lastTransferResult);
@@ -115,13 +116,13 @@ public abstract class GuardedStrategy : IEpDeviceController
                 case PacketTransferDirection.Incoming:
                     if (!this.CanRequestIncoming(timeStep, loads, generators))
                     {
-                        decision = new ControlDecision.NoAction();
+                        decision = ControlDecision.NoAction.Instance;
                     }
                     break;
                 case PacketTransferDirection.Outgoing:
                     if (!this.CanRequestOutgoing(timeStep, loads, generators))
                     {
-                        decision = new ControlDecision.NoAction();
+                        decision = ControlDecision.NoAction.Instance;
                     }
                     break;
             }

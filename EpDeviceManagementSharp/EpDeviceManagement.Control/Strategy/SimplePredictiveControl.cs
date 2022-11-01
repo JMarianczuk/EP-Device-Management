@@ -1,5 +1,6 @@
 ﻿using EpDeviceManagement.Contracts;
 using EpDeviceManagement.Control.Contracts;
+using EpDeviceManagement.Control.Extensions;
 using EpDeviceManagement.Control.Strategy.Base;
 using EpDeviceManagement.Control.Strategy.Guards;
 using EpDeviceManagement.UnitsExtensions;
@@ -41,17 +42,17 @@ public class SimplePredictiveControl : GuardedStrategy, IEpDeviceController
     protected override ControlDecision DoUnguardedControl(
         int dataPoint,
         TimeSpan timeStep,
-        IEnumerable<ILoad> loads,
-        IEnumerable<IGenerator> generators,
+        ILoad[] loads,
+        IGenerator[] generators,
         TransferResult lastTransferResult)
     {
         var predictedSteps = (int)(this.predictionHorizon / timeStep);
         var loadPredictions = this.loadsPredictor
             .Predict(predictedSteps, dataPoint)
-            .Prepend(loads.Select(x => x.CurrentDemand).Sum());
+            .Prepend(loads.Sum());
         var generationPredictions = this.generationPredictor
             .Predict(predictedSteps, dataPoint)
-            .Prepend(generators.Select(x => x.CurrentGeneration).Sum());
+            .Prepend(generators.Sum());
         var currentBattery = this.Battery.CurrentStateOfCharge;
         var minSoC = this.Battery.TotalCapacity * 0.1;
         var maxSoC = this.Battery.TotalCapacity * 0.9;
@@ -61,22 +62,16 @@ public class SimplePredictiveControl : GuardedStrategy, IEpDeviceController
             currentBattery -= effectiveLoad * timeStep;
             if (currentBattery <= minSoC)
             {
-                return new ControlDecision.RequestTransfer()
-                {
-                    RequestedDirection = PacketTransferDirection.Incoming,
-                };
+                return ControlDecision.RequestTransfer.Incoming;
             }
 
             if (currentBattery >= maxSoC)
             {
-                return new ControlDecision.RequestTransfer()
-                {
-                    RequestedDirection = PacketTransferDirection.Outgoing,
-                };
+                return ControlDecision.RequestTransfer.Outgoing;
             }
         }
 
-        return new ControlDecision.NoAction();
+        return ControlDecision.NoAction.Instance;
     }
 
     private Power PowerSum(Power left, Power right) => left + right;
@@ -85,7 +80,7 @@ public class SimplePredictiveControl : GuardedStrategy, IEpDeviceController
 
     private Energy PacketSize { get; }
 
-    public override string Name => nameof(SimplePredictiveControl);
+    public override string Name => "Simple Predictive Control";
 
     public override string Configuration { get; }
 

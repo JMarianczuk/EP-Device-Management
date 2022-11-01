@@ -4,5 +4,5 @@ namespace EpDeviceManagement.Contracts;
 
 public interface ILoad
 {
-    Power CurrentDemand { get; }
+    Power MomentaneousDemand { get; }
 }

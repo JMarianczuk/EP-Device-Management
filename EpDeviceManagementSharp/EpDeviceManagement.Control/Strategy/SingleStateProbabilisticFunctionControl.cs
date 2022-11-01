@@ -1,6 +1,7 @@
 ﻿using System.Globalization;
 using System.Security.Cryptography;
 using EpDeviceManagement.Contracts;
+using EpDeviceManagement.Control.Extensions;
 using EpDeviceManagement.Control.Strategy.Base;
 using EpDeviceManagement.Control.Strategy.Guards;
 using EpDeviceManagement.UnitsExtensions;
@@ -48,6 +49,8 @@ public abstract class SingleStateProbabilisticFunctionControl : GuardedStrategy,
 
     protected Energy MiddleLimit { get; }
 
+    public override string Name => "Probabilistic Range Control";
+
     public override string Configuration => string.Create(CultureInfo.InvariantCulture,
         $"[{this.lowerLevel.DecimalFractions:F2}, {this.upperLevel.DecimalFractions:F2}]");
 
@@ -58,30 +61,24 @@ public abstract class SingleStateProbabilisticFunctionControl : GuardedStrategy,
     protected override ControlDecision DoUnguardedControl(
         int dataPoint,
         TimeSpan timeStep,
-        IEnumerable<ILoad> loads,
-        IEnumerable<IGenerator> generators,
+        ILoad[] loads,
+        IGenerator[] generators,
         TransferResult lastTransferResult)
     {
         if (this.AssumedCurrentBatterySoC < this.LowerLimit)
         {
-            return new ControlDecision.RequestTransfer()
-            {
-                RequestedDirection = PacketTransferDirection.Incoming,
-            };
+            return ControlDecision.RequestTransfer.Incoming;
         }
         else if (this.AssumedCurrentBatterySoC < this.MiddleLimit)
         {
             var probability = this.GetProbabilityForLowerHalf(timeStep);
             if (random.NextDouble() <= probability)
             {
-                return new ControlDecision.RequestTransfer()
-                {
-                    RequestedDirection = PacketTransferDirection.Incoming,
-                };
+                return ControlDecision.RequestTransfer.Incoming;
             }
             else
             {
-                return new ControlDecision.NoAction();
+                return ControlDecision.NoAction.Instance;
             }
         }
         else if (this.AssumedCurrentBatterySoC < this.UpperLimit)
@@ -89,30 +86,16 @@ public abstract class SingleStateProbabilisticFunctionControl : GuardedStrategy,
             var probability = this.GetProbabilityForUpperHalf(timeStep);
             if (random.NextDouble() <= probability)
             {
-                return new ControlDecision.RequestTransfer()
-                {
-                    RequestedDirection = PacketTransferDirection.Outgoing,
-                };
+                return ControlDecision.RequestTransfer.Outgoing;
             }
             else
             {
-                return new ControlDecision.NoAction();
+                return ControlDecision.NoAction.Instance;
             }
         }
         else
         {
-            var totalGenerationPower = generators.Select(g => g.CurrentGeneration).Sum();
-            if (this.Battery.CurrentStateOfCharge + totalGenerationPower * timeStep >= this.Battery.TotalCapacity)
-            {
-                foreach (var cGen in generators.OfType<IControllableGenerator>())
-                {
-                    cGen.DisableGenerationForOneTimeStep();
-                }
-            }
-            return new ControlDecision.RequestTransfer()
-            {
-                RequestedDirection = PacketTransferDirection.Outgoing,
-            };
+            return ControlDecision.RequestTransfer.Outgoing;
         }
     }
 

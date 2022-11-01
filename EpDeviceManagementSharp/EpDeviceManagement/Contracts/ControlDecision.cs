@@ -4,9 +4,22 @@ public abstract class ControlDecision
 {
     public sealed class RequestTransfer : ControlDecision
     {
-        public PacketTransferDirection RequestedDirection { get; init; }
+        private RequestTransfer()
+        {
 
-        public bool AcceptIncomingRequestIfOwnRequestFails { get; init; } = true;
+        }
+
+        public static RequestTransfer Incoming { get; } = new RequestTransfer()
+        {
+            RequestedDirection = PacketTransferDirection.Incoming,
+        };
+
+        public static RequestTransfer Outgoing { get; } = new RequestTransfer()
+        {
+            RequestedDirection = PacketTransferDirection.Outgoing,
+        };
+
+        public PacketTransferDirection RequestedDirection { get; init; }
     }
 
     public sealed class AcceptIncomingRequest : ControlDecision
@@ -18,7 +31,12 @@ public abstract class ControlDecision
 
     public sealed class NoAction : ControlDecision
     {
-        
+        private NoAction()
+        {
+
+        }
+
+        public static NoAction Instance { get; } = new NoAction();
     }
 }
 

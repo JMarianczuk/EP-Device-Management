@@ -17,7 +17,7 @@ public class LinearProbabilisticFunctionControl : SingleStateProbabilisticFuncti
     {
     }
 
-    public override string Name => nameof(LinearProbabilisticFunctionControl);
+    //public override string Name => nameof(LinearProbabilisticFunctionControl);
 
     protected override double GetProbabilityForLowerHalf(TimeSpan timeStep)
     {

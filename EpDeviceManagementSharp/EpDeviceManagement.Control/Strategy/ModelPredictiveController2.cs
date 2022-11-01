@@ -2,6 +2,7 @@
 using System.Runtime.CompilerServices;
 using EpDeviceManagement.Contracts;
 using EpDeviceManagement.Control.Contracts;
+using EpDeviceManagement.Control.Extensions;
 using EpDeviceManagement.Control.Strategy.Base;
 using EpDeviceManagement.Control.Strategy.Guards;
 using EpDeviceManagement.Simulation.Storage;
@@ -207,17 +208,17 @@ public class ModelPredictiveController2 : GuardedStrategy, IEpDeviceController, 
     protected override ControlDecision DoUnguardedControl(
         int dataPoint,
         TimeSpan timeStep,
-        IEnumerable<ILoad> loads,
-        IEnumerable<IGenerator> generators,
+        ILoad[] loads,
+        IGenerator[] generators,
         TransferResult lastTransferResult)
     {
         var predictedSteps = (int)(this.predictionHorizon / timeStep) - 1;
-        var currentLoad = loads.Select(x => x.CurrentDemand).Sum();
+        var currentLoad = loads.Sum();
         var loadPredictions = this.loadsPredictor
             .Predict(predictedSteps, dataPoint)
             .Prepend(currentLoad)
             .ToList();
-        var currentGeneration = generators.Select(x => x.CurrentGeneration).Sum();
+        var currentGeneration = generators.Sum();
         var generationPredictions = this.generationPredictor
             .Predict(predictedSteps, dataPoint)
             .Prepend(currentGeneration)
@@ -248,21 +249,15 @@ public class ModelPredictiveController2 : GuardedStrategy, IEpDeviceController, 
             var targetBatterySoC = this.battery.TotalCapacity * this.targetBatteryState.DecimalFractions;
             if (this.battery.CurrentStateOfCharge > targetBatterySoC)
             {
-                return new ControlDecision.RequestTransfer()
-                {
-                    RequestedDirection = PacketTransferDirection.Outgoing,
-                };
+                return ControlDecision.RequestTransfer.Outgoing;
             }
             else if (this.battery.CurrentStateOfCharge < targetBatterySoC)
             {
-                return new ControlDecision.RequestTransfer()
-                {
-                    RequestedDirection = PacketTransferDirection.Incoming,
-                };
+                return ControlDecision.RequestTransfer.Incoming;
             }
             else
             {
-                return new ControlDecision.NoAction();
+                return ControlDecision.NoAction.Instance;
             }
         }
         solution.GetVariables(this.variables_buffer);
@@ -295,21 +290,15 @@ public class ModelPredictiveController2 : GuardedStrategy, IEpDeviceController, 
 #endif
         if (packet_in != 0)
         {
-            return new ControlDecision.RequestTransfer()
-            {
-                RequestedDirection = PacketTransferDirection.Incoming,
-            };
+            return ControlDecision.RequestTransfer.Incoming;
         }
 
         if (packet_out != 0)
         {
-            return new ControlDecision.RequestTransfer()
-            {
-                RequestedDirection = PacketTransferDirection.Outgoing,
-            };
+            return ControlDecision.RequestTransfer.Outgoing;
         }
 
-        return new ControlDecision.NoAction();
+        return ControlDecision.NoAction.Instance;
     }
 
     public void Dispose()

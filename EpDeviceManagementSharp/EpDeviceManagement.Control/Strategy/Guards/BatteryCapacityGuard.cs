@@ -14,7 +14,7 @@ public sealed class BatteryCapacityGuard : BatteryGuardBase, IControlGuard
     {
     }
 
-    public bool CanRequestIncoming(TimeSpan timeStep, IEnumerable<ILoad> loads, IEnumerable<IGenerator> generators)
+    public bool CanRequestIncoming(TimeSpan timeStep, ILoad[] loads, IGenerator[] generators)
     {
         var expectedSoC = this.Battery.CurrentStateOfCharge
                           + GetGeneratorsEnergy(timeStep, generators)
@@ -23,7 +23,7 @@ public sealed class BatteryCapacityGuard : BatteryGuardBase, IControlGuard
         return expectedSoC < this.Battery.TotalCapacity;
     }
 
-    public bool CanRequestOutgoing(TimeSpan timeStep, IEnumerable<ILoad> loads, IEnumerable<IGenerator> generators)
+    public bool CanRequestOutgoing(TimeSpan timeStep, ILoad[] loads, IGenerator[] generators)
     {
         var expectedSoC = this.Battery.CurrentStateOfCharge
                        + GetGeneratorsEnergy(timeStep, generators)

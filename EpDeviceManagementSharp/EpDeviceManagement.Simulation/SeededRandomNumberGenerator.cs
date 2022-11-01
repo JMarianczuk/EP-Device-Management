@@ -15,4 +15,9 @@ public class SeededRandomNumberGenerator : RandomNumberGenerator
     {
         this.random.NextBytes(data);
     }
+
+    public override void GetBytes(Span<byte> data)
+    {
+        this.random.NextBytes(data);
+    }
 }

@@ -4,5 +4,5 @@ namespace EpDeviceManagement.Contracts;
 
 public interface IGenerator
 {
-    Power CurrentGeneration { get; }
+    Power MomentaneousGeneration { get; }
 }

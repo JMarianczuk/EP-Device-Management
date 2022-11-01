@@ -43,12 +43,8 @@ public class BatteryElectricStorage2 : IStorage
 
     public void Simulate(TimeSpan timeStep, Power chargeRate, Power dischargeRate)
     {
-        var chargeDifference = timeStep *
-                               (this.ChargingEfficiency * chargeRate
-                                - this.DischargingEfficiency * dischargeRate);
-        //var standingLossRate = this.StandingLosses * this.CurrentStateOfCharge;
-        var standingLoss = this.StandbyPower * timeStep;
-        var newSoC = this.CurrentStateOfCharge + chargeDifference - standingLoss;
+        var newSoC = TrySimulate(timeStep, chargeRate, dischargeRate);
+
         if (newSoC < Energy.Zero)
         {
             newSoC = Energy.Zero;
@@ -60,6 +56,17 @@ public class BatteryElectricStorage2 : IStorage
         }
 
         this.currentStateOfCharge = newSoC;
+    }
+
+    public Energy TrySimulate(TimeSpan timeStep, Power chargeRate, Power dischargeRate)
+    {
+        var chargeDifference = timeStep *
+                               (this.ChargingEfficiency * chargeRate
+                                - this.DischargingEfficiency * dischargeRate);
+        var standingLoss = this.StandbyPower * timeStep;
+        var newSoC = this.CurrentStateOfCharge + chargeDifference - standingLoss;
+
+        return newSoC;
     }
 
     public override string ToString()

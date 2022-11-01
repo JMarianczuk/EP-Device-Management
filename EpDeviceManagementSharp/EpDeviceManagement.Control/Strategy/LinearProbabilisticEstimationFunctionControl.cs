@@ -1,5 +1,6 @@
 ﻿using System.Security.Cryptography;
 using EpDeviceManagement.Contracts;
+using EpDeviceManagement.Control.Extensions;
 using EpDeviceManagement.UnitsExtensions;
 using UnitsNet;
 
@@ -18,15 +19,15 @@ public class LinearProbabilisticEstimationFunctionControl : LinearProbabilisticF
 
     private Energy assumedCurrentBatterySoC;
 
-    public override string Name => nameof(LinearProbabilisticEstimationFunctionControl);
+    public override string Name => base.Name + " + Estimation";
 
     protected override Energy AssumedCurrentBatterySoC => this.assumedCurrentBatterySoC;
 
     protected override ControlDecision DoUnguardedControl(
         int dataPoint,
         TimeSpan timeStep,
-        IEnumerable<ILoad> loads,
-        IEnumerable<IGenerator> generators,
+        ILoad[] loads,
+        IGenerator[] generators,
         TransferResult lastTransferResult)
     {
         this.assumedCurrentBatterySoC = CalculateAssumedCurrentBatterySoC(timeStep, loads, generators, this.Battery.CurrentStateOfCharge);
@@ -35,12 +36,12 @@ public class LinearProbabilisticEstimationFunctionControl : LinearProbabilisticF
 
     public static Energy CalculateAssumedCurrentBatterySoC(
         TimeSpan timeStep,
-        IEnumerable<ILoad> loads,
-        IEnumerable<IGenerator> generators,
+        ILoad[] loads,
+        IGenerator[] generators,
         Energy actualCurrentStateOfCharge)
     {
-        var l = loads.Select(x => x.CurrentDemand).Sum();
-        var g = generators.Select(x => x.CurrentGeneration).Sum();
+        var l = loads.Sum();
+        var g = generators.Sum();
         var net = l - g;
         var batteryCurrentStateOfCharge = actualCurrentStateOfCharge - (net * timeStep);
         return batteryCurrentStateOfCharge;

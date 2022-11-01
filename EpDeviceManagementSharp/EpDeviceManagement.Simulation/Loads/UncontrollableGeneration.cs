@@ -5,10 +5,10 @@ namespace EpDeviceManagement.Simulation.Loads;
 
 public class UncontrollableGeneration : IGenerator
 {
-    public Power CurrentGeneration { get; set; }
+    public Power MomentaneousGeneration { get; set; }
 
     public override string ToString()
     {
-        return $"Gen: {this.CurrentGeneration}";
+        return $"Gen: {this.MomentaneousGeneration}";
     }
 }

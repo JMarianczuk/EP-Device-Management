@@ -6,7 +6,7 @@ public sealed class OscillationGuard : IControlGuard
 {
     private TransferResult? lastTransfer;
 
-    public bool CanRequestIncoming(TimeSpan timeStep, IEnumerable<ILoad> loads, IEnumerable<IGenerator> generators)
+    public bool CanRequestIncoming(TimeSpan timeStep, ILoad[] loads, IGenerator[] generators)
     {
         var sentPacketLastStep = lastTransfer is TransferResult.Success
         {
@@ -15,7 +15,7 @@ public sealed class OscillationGuard : IControlGuard
         return !sentPacketLastStep;
     }
 
-    public bool CanRequestOutgoing(TimeSpan timeStep, IEnumerable<ILoad> loads, IEnumerable<IGenerator> generators)
+    public bool CanRequestOutgoing(TimeSpan timeStep, ILoad[] loads, IGenerator[] generators)
     {
         var receivedPacketLastStep = lastTransfer is TransferResult.Success
         {

@@ -19,17 +19,14 @@ public class AlwaysRequestIncomingPackets : GuardedStrategy, IEpDeviceController
     protected override ControlDecision DoUnguardedControl(
         int dataPoint,
         TimeSpan timeStep,
-        IEnumerable<ILoad> loads,
-        IEnumerable<IGenerator> generators,
+        ILoad[] loads,
+        IGenerator[] generators,
         TransferResult lastTransferResult)
     {
-        return new ControlDecision.RequestTransfer()
-        {
-            RequestedDirection = PacketTransferDirection.Incoming,
-        };
+        return ControlDecision.RequestTransfer.Incoming;
     }
 
-    public override string Name => nameof(AlwaysRequestIncomingPackets);
+    public override string Name => "Always Request Incoming";
 
     public override string Configuration => string.Empty;
 

@@ -53,9 +53,23 @@ public class EnhancedPowerDataSet
 
     public Power Residential2_Load { get; init; }
 
+    public Power Residential3_Load { get; init; }
+
+    public Power Residential3_Generation { get; init; }
+
     public Power Residential4_Load { get; init; }
 
     public Power Residential4_ControllableLoad { get; init; }
 
     public Power Residential4_Generation { get; init; }
+
+    public Power Residential5_Load { get; init; }
+
+    public Power Industrial3_Load { get; init; }
+
+    public Power Industrial3_ControllableLoad { get; init; }
+
+    public Power Industrial3_Generation { get; init; }
+
+    public EnhancedPowerDataSet? FineResDataSet { get; init; }
 }

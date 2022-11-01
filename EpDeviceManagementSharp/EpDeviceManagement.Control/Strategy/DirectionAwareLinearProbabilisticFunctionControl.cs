@@ -1,7 +1,7 @@
 ﻿using System.Globalization;
 using System.Security.Cryptography;
 using EpDeviceManagement.Contracts;
-using EpDeviceManagement.UnitsExtensions;
+using EpDeviceManagement.Control.Extensions;
 using UnitsNet;
 
 namespace EpDeviceManagement.Control.Strategy;
@@ -26,7 +26,7 @@ public class DirectionAwareLinearProbabilisticFunctionControl : LinearProbabilis
         this.loadLimitPortionOfPacketSize = (decimal) loadLimitPortionOfPacketSize.DecimalFractions;
     }
 
-    public override string Name => nameof(DirectionAwareLinearProbabilisticFunctionControl) + (this.withEstimation ? "+Estimation" : "");
+    public override string Name => base.Name + " + Direction" + (this.withEstimation ? " + Estimation" : "");
 
     public override string Configuration => string.Create(CultureInfo.InvariantCulture,
         $"{base.Configuration} ({this.loadLimitPortionOfPacketSize:F2})");
@@ -40,8 +40,8 @@ public class DirectionAwareLinearProbabilisticFunctionControl : LinearProbabilis
     protected override ControlDecision DoUnguardedControl(
         int dataPoint,
         TimeSpan timeStep,
-        IEnumerable<ILoad> loads,
-        IEnumerable<IGenerator> generators,
+        ILoad[] loads,
+        IGenerator[] generators,
         TransferResult lastTransferResult)
     {
         if (withEstimation)
@@ -57,8 +57,8 @@ public class DirectionAwareLinearProbabilisticFunctionControl : LinearProbabilis
         if (this.AssumedCurrentBatterySoC > this.LowerLimit
             && this.AssumedCurrentBatterySoC < this.UpperLimit)
         {
-            var totalLoad = loads.Select(x => x.CurrentDemand).Sum() -
-                            generators.Select(x => x.CurrentGeneration).Sum();
+            var totalLoad = loads.Sum() -
+                            generators.Sum();
             var packetPower = this.PacketSize / timeStep;
             var loadLimit = packetPower * loadLimitPortionOfPacketSize;
             if (this.AssumedCurrentBatterySoC < this.MiddleLimit)
@@ -68,7 +68,7 @@ public class DirectionAwareLinearProbabilisticFunctionControl : LinearProbabilis
                 var generation = -totalLoad;
                 if (generation >= loadLimit)
                 {
-                    return new ControlDecision.NoAction();
+                    return ControlDecision.NoAction.Instance;
                 }
             }
             else
@@ -77,7 +77,7 @@ public class DirectionAwareLinearProbabilisticFunctionControl : LinearProbabilis
                 // check if load is >= 1/10 of packet
                 if (totalLoad >= loadLimit)
                 {
-                    return new ControlDecision.NoAction();
+                    return ControlDecision.NoAction.Instance;
                 }
             }
         }

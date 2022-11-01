@@ -7,6 +7,8 @@ public class ControllableGeneration : IControllableGenerator
 {
     public Power CurrentGeneration { get; set; }
 
+    public Power MomentaneousGeneration { get; set; }
+
     public bool IsGenerating { get; set; }
 
     public void DisableGenerationForOneTimeStep()

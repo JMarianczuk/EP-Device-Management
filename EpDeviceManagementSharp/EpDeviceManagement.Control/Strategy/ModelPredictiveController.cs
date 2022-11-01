@@ -13,12 +13,17 @@ public class ModelPredictiveController : IEpDeviceController
         this.battery = battery;
     }
 
-    public ControlDecision DoControl(int dataPoint, TimeSpan timeStep, IEnumerable<ILoad> loads, IEnumerable<IGenerator> generators, TransferResult lastTransferResult)
+    public ControlDecision DoControl(
+        int dataPoint,
+        TimeSpan timeStep, 
+        ILoad[] loads,
+        IGenerator[] generators,
+        TransferResult lastTransferResult)
     {
         (
             var deferrable,
             var interruptible,
-            loads
+            var iloads
         ) = loads.GroupByDerivingType<IDeferrableLoad, IInterruptibleLoad, ILoad>();
 
         // come to a decision if energy needs to be added to battery
@@ -37,7 +42,7 @@ public class ModelPredictiveController : IEpDeviceController
                 && def.MaximumPossibleDeferral > 3 * timeStep)
             {
                 def.DeferFor(3 * timeStep);
-                totalShiftPower -= def.CurrentDemand;
+                totalShiftPower -= def.MomentaneousDemand;
             }
         }
 

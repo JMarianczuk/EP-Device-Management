@@ -15,5 +15,10 @@ public interface IEpDeviceController
      * Either needs to be a list of decisions,
      * or the controller makes the decisions itself
      */
-    ControlDecision DoControl(int dataPoint, TimeSpan timeStep, IEnumerable<ILoad> loads, IEnumerable<IGenerator> generators, TransferResult lastTransferResult);
+    ControlDecision DoControl(
+        int dataPoint,
+        TimeSpan timeStep,
+        ILoad[] loads,
+        IGenerator[] generators,
+        TransferResult lastTransferResult);
 }

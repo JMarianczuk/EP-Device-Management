@@ -19,17 +19,14 @@ public class AlwaysRequestOutgoingPackets : GuardedStrategy, IEpDeviceController
     protected override ControlDecision DoUnguardedControl(
         int dataPoint,
         TimeSpan timeStep,
-        IEnumerable<ILoad> loads,
-        IEnumerable<IGenerator> generators,
+        ILoad[] loads,
+        IGenerator[] generators,
         TransferResult lastTransferResult)
     {
-        return new ControlDecision.RequestTransfer()
-        {
-            RequestedDirection = PacketTransferDirection.Outgoing,
-        };
+        return ControlDecision.RequestTransfer.Outgoing;
     }
 
-    public override string Name => nameof(AlwaysRequestOutgoingPackets);
+    public override string Name => "Always Request Outgoing";
 
     public override string Configuration => string.Empty;
 

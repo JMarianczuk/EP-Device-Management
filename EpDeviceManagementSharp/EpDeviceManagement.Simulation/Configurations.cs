@@ -20,14 +20,52 @@ public class Configuration
 public class DataSet
 {
     private static Func<EnhancedPowerDataSet, Power> ZeroPower = _ => Power.Zero;
+    private readonly Func<EnhancedPowerDataSet, Power> getLoadsTotalPower = ZeroPower;
+    private readonly Func<EnhancedPowerDataSet, Power> getGeneratorsTotalPower = ZeroPower;
 
     public IReadOnlyCollection<EnhancedPowerDataSet> Data { get; init; } = Array.Empty<EnhancedPowerDataSet>();
 
     public string Configuration { get; init; } = string.Empty;
 
-    public Func<EnhancedPowerDataSet, Power> GetLoadsTotalPower { get; init; } = ZeroPower;
+    public Func<EnhancedPowerDataSet, Power> GetLoadsTotalPower
+    {
+        get => this.getLoadsTotalPower;
+        init
+        {
+            this.getLoadsTotalPower = value;
+            this.GetMomentaneousLoadsPower = GetMomentaneousPowerFromFineRes(value);
+        }
+    }
 
-    public Func<EnhancedPowerDataSet, Power> GetGeneratorsTotalPower { get; init; } = ZeroPower;
+    public Func<EnhancedPowerDataSet, Power> GetMomentaneousLoadsPower { get; init; } = ZeroPower;
+
+    public Func<EnhancedPowerDataSet, Power> GetGeneratorsTotalPower
+    {
+        get => this.getGeneratorsTotalPower;
+        init
+        {
+            this.getGeneratorsTotalPower = value;
+            this.GetMomentaneousGeneratorsPower = GetMomentaneousPowerFromFineRes(value);
+        }
+    }
+
+    public Func<EnhancedPowerDataSet, Power> GetMomentaneousGeneratorsPower { get; init; } = ZeroPower;
+
+    public static Func<EnhancedPowerDataSet, Power> GetMomentaneousPowerFromFineRes(
+        Func<EnhancedPowerDataSet, Power> getPowerFunc)
+    {
+        return d =>
+        {
+            if (d.FineResDataSet != null)
+            {
+                return getPowerFunc(d.FineResDataSet);
+            }
+            else
+            {
+                return getPowerFunc(d);
+            }
+        };
+    }
 }
 
 public readonly struct BatteryConfiguration

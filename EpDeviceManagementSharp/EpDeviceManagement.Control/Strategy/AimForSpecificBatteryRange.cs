@@ -55,31 +55,25 @@ public class AimForSpecificBatteryRange : GuardedStrategy, IEpDeviceController
     protected override ControlDecision DoUnguardedControl(
         int dataPoint,
         TimeSpan timeStep,
-        IEnumerable<ILoad> loads,
-        IEnumerable<IGenerator> generators,
+        ILoad[] loads,
+        IGenerator[] generators,
         TransferResult lastTransferResult)
     {
-        PacketTransferDirection direction;
         if (this.Battery.CurrentStateOfCharge < desiredMinimumStateOfCharge)
         {
-            direction = PacketTransferDirection.Incoming;
+            return ControlDecision.RequestTransfer.Incoming;
         }
         else if (this.Battery.CurrentStateOfCharge > desiredMaximumStateOfCharge)
         {
-            direction = PacketTransferDirection.Outgoing;
+            return ControlDecision.RequestTransfer.Outgoing;
         }
         else
         {
-            return new ControlDecision.NoAction();
+            return ControlDecision.NoAction.Instance;
         }
-
-        return new ControlDecision.RequestTransfer()
-        {
-            RequestedDirection = direction,
-        };
     }
 
-    public override string Name => nameof(AimForSpecificBatteryRange);
+    public override string Name => "Battery Range";
 
     public override string Configuration => string.Create(CultureInfo.InvariantCulture, $"[{this.desiredMinimumLevel.DecimalFractions:F2}, {this.desiredMaximumLevel.DecimalFractions:F2}]");
 

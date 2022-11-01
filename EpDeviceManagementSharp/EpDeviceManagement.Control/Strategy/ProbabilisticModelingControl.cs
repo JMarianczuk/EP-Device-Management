@@ -14,11 +14,11 @@ public class ProbabilisticModelingControl : GuardedStrategy, IEpDeviceController
     private readonly Ratio probabilisticModeUpperLevel;
     private readonly Energy probabilisticModeUpperLimit;
     private readonly Energy probabilisticModeLowerLimit;
-    private readonly StateMachine<State, Event> stateMachine;
+    private readonly StateMachine stateMachine;
     private readonly RandomNumberGenerator random;
-    private readonly Ratio p1probability;
-    private readonly Ratio p2probability;
-    private readonly Ratio p3probability;
+    private readonly double p1probability;
+    private readonly double p2probability;
+    private readonly double p3probability;
 
     public ProbabilisticModelingControl(
         IStorage battery,
@@ -35,9 +35,9 @@ public class ProbabilisticModelingControl : GuardedStrategy, IEpDeviceController
         Battery = battery;
         this.random = random;
 
-        p1probability = Ratio.FromPercent(70);
-        p2probability = Ratio.FromPercent(50);
-        p3probability = Ratio.FromPercent(30);
+        p1probability = Ratio.FromPercent(70).DecimalFractions;
+        p2probability = Ratio.FromPercent(50).DecimalFractions;
+        p3probability = Ratio.FromPercent(30).DecimalFractions;
 
         if (probabilisticModeUpperLevel < probabilisticModeLowerLevel)
         {
@@ -72,89 +72,89 @@ public class ProbabilisticModelingControl : GuardedStrategy, IEpDeviceController
         {
             initialState = State.BatteryLow;
         }
-        stateMachine = BuildMachine(initialState);
+        stateMachine = new StateMachine(initialState);
     }
 
     private IStorage Battery { get; }
 
-    public StateMachine<State, Event> BuildMachine(State initialState)
-    {
-        var sm = new StateMachine<State, Event>(initialState);
+    //public StateMachine<State, Event> BuildMachine(State initialState)
+    //{
+    //    var sm = new StateMachine<State, Event>(initialState);
 
-        sm.Configure(State.BatteryLow)
-            .PermitReentry(Event.BatteryBelowSetpoint)
-            .Permit(Event.BatteryWithinLimits, State.P1)
-            .Permit(Event.BatteryAboveSetpoint, State.BatteryHigh)
-            .PermitReentry(Event.TransferAccepted)
-            .PermitReentry(Event.TransferDenied);
+    //    sm.Configure(State.BatteryLow)
+    //        .PermitReentry(Event.BatteryBelowSetpoint)
+    //        .Permit(Event.BatteryWithinLimits, State.P1)
+    //        .Permit(Event.BatteryAboveSetpoint, State.BatteryHigh)
+    //        .PermitReentry(Event.TransferAccepted)
+    //        .PermitReentry(Event.TransferDenied);
 
-        sm.Configure(State.P1)
-            .PermitReentry(Event.TransferAccepted)
-            .Permit(Event.TransferDenied, State.P2)
-            .Permit(Event.BatteryBelowSetpoint, State.BatteryLow)
-            .Permit(Event.BatteryAboveSetpoint, State.BatteryHigh)
-            .PermitReentry(Event.BatteryWithinLimits);
+    //    sm.Configure(State.P1)
+    //        .PermitReentry(Event.TransferAccepted)
+    //        .Permit(Event.TransferDenied, State.P2)
+    //        .Permit(Event.BatteryBelowSetpoint, State.BatteryLow)
+    //        .Permit(Event.BatteryAboveSetpoint, State.BatteryHigh)
+    //        .PermitReentry(Event.BatteryWithinLimits);
 
-        sm.Configure(State.P2)
-            .Permit(Event.TransferAccepted, State.P1)
-            .Permit(Event.TransferDenied, State.P3)
-            .Permit(Event.BatteryBelowSetpoint, State.BatteryLow)
-            .Permit(Event.BatteryAboveSetpoint, State.BatteryHigh)
-            .PermitReentry(Event.BatteryWithinLimits);
+    //    sm.Configure(State.P2)
+    //        .Permit(Event.TransferAccepted, State.P1)
+    //        .Permit(Event.TransferDenied, State.P3)
+    //        .Permit(Event.BatteryBelowSetpoint, State.BatteryLow)
+    //        .Permit(Event.BatteryAboveSetpoint, State.BatteryHigh)
+    //        .PermitReentry(Event.BatteryWithinLimits);
 
-        sm.Configure(State.P3)
-            .PermitReentry(Event.TransferDenied)
-            .Permit(Event.TransferAccepted, State.P2)
-            .Permit(Event.BatteryBelowSetpoint, State.BatteryLow)
-            .Permit(Event.BatteryAboveSetpoint, State.BatteryHigh)
-            .PermitReentry(Event.BatteryWithinLimits);
+    //    sm.Configure(State.P3)
+    //        .PermitReentry(Event.TransferDenied)
+    //        .Permit(Event.TransferAccepted, State.P2)
+    //        .Permit(Event.BatteryBelowSetpoint, State.BatteryLow)
+    //        .Permit(Event.BatteryAboveSetpoint, State.BatteryHigh)
+    //        .PermitReentry(Event.BatteryWithinLimits);
 
-        sm.Configure(State.BatteryHigh)
-            .PermitReentry(Event.BatteryAboveSetpoint)
-            .Permit(Event.BatteryWithinLimits, State.P3)
-            .Permit(Event.BatteryBelowSetpoint, State.BatteryLow)
-            .PermitReentry(Event.TransferAccepted)
-            .PermitReentry(Event.TransferDenied);
+    //    sm.Configure(State.BatteryHigh)
+    //        .PermitReentry(Event.BatteryAboveSetpoint)
+    //        .Permit(Event.BatteryWithinLimits, State.P3)
+    //        .Permit(Event.BatteryBelowSetpoint, State.BatteryLow)
+    //        .PermitReentry(Event.TransferAccepted)
+    //        .PermitReentry(Event.TransferDenied);
 
-        return sm;
-    }
+    //    return sm;
+    //}
 
-    public StateMachine<State, Event> BuildSimplifiedMachine(State initialState)
-    {
-        var sm = new StateMachine<State, Event>(initialState);
+    //public StateMachine<State, Event> BuildSimplifiedMachine(State initialState)
+    //{
+    //    var sm = new StateMachine<State, Event>(initialState);
 
-        sm.Configure(State.BatteryLow)
-            .Permit(Event.BatteryWithinLimits, State.P1);
+    //    sm.Configure(State.BatteryLow)
+    //        .Permit(Event.BatteryWithinLimits, State.P1);
 
-        sm.Configure(State.P1)
-            .PermitReentry(Event.TransferAccepted)
-            .Permit(Event.TransferDenied, State.P2)
-            .Permit(Event.BatteryBelowSetpoint, State.BatteryLow)
-            .Permit(Event.BatteryAboveSetpoint, State.BatteryHigh);
+    //    sm.Configure(State.P1)
+    //        .PermitReentry(Event.TransferAccepted)
+    //        .Permit(Event.TransferDenied, State.P2)
+    //        .Permit(Event.BatteryBelowSetpoint, State.BatteryLow)
+    //        .Permit(Event.BatteryAboveSetpoint, State.BatteryHigh);
 
-        sm.Configure(State.P2)
-            .Permit(Event.TransferAccepted, State.P1)
-            .Permit(Event.TransferDenied, State.P3)
-            .Permit(Event.BatteryBelowSetpoint, State.BatteryLow)
-            .Permit(Event.BatteryAboveSetpoint, State.BatteryHigh);
+    //    sm.Configure(State.P2)
+    //        .Permit(Event.TransferAccepted, State.P1)
+    //        .Permit(Event.TransferDenied, State.P3)
+    //        .Permit(Event.BatteryBelowSetpoint, State.BatteryLow)
+    //        .Permit(Event.BatteryAboveSetpoint, State.BatteryHigh);
 
-        sm.Configure(State.P3)
-            .PermitReentry(Event.TransferDenied)
-            .Permit(Event.TransferAccepted, State.P2)
-            .Permit(Event.BatteryBelowSetpoint, State.BatteryLow)
-            .Permit(Event.BatteryAboveSetpoint, State.BatteryHigh);
+    //    sm.Configure(State.P3)
+    //        .PermitReentry(Event.TransferDenied)
+    //        .Permit(Event.TransferAccepted, State.P2)
+    //        .Permit(Event.BatteryBelowSetpoint, State.BatteryLow)
+    //        .Permit(Event.BatteryAboveSetpoint, State.BatteryHigh);
 
-        sm.Configure(State.BatteryHigh)
-            .Permit(Event.BatteryWithinLimits, State.P3);
+    //    sm.Configure(State.BatteryHigh)
+    //        .Permit(Event.BatteryWithinLimits, State.P3);
 
-        return sm;
-    }
+    //    return sm;
+    //}
 
     protected override ControlDecision DoUnguardedControl(
         int dataPoint,
         TimeSpan timeStep,
-        IEnumerable<ILoad> loads,
-        IEnumerable<IGenerator> generators,
+        ILoad[] loads,
+        IGenerator[] generators,
         TransferResult transferResult)
     {
         if (this.Battery.CurrentStateOfCharge > probabilisticModeUpperLimit)
@@ -186,80 +186,61 @@ public class ProbabilisticModelingControl : GuardedStrategy, IEpDeviceController
         {
             case State.BatteryLow:
             {
-                loads = loads is ICollection<ILoad> list ? list : loads.ToList();
-                var interruptibles = loads.OfType<IInterruptibleLoad>().ToList();
-                foreach (var i in interruptibles)
+                foreach (var load in loads)
                 {
-                    if (i.CanCurrentlyBeInterrupted && !i.IsCurrentlyInInterruptedState)
+                    if (load is IInterruptibleLoad { CanCurrentlyBeInterrupted: true, IsCurrentlyInInterruptedState: false } i)
                     {
                         i.Interrupt();
                     }
                 }
 
-                return new ControlDecision.RequestTransfer()
-                {
-                    RequestedDirection = PacketTransferDirection.Incoming,
-                };
+                return ControlDecision.RequestTransfer.Incoming;
             }
             case State.P1:
-                if (random.NextDouble() <= p1probability.DecimalFractions)
+                if (random.NextDouble() <= p1probability)
                 {
-                    return new ControlDecision.RequestTransfer()
-                    {
-                        RequestedDirection = PacketTransferDirection.Incoming,
-                    };
+                    return ControlDecision.RequestTransfer.Incoming;
                 }
                 else
                 {
-                    return new ControlDecision.NoAction();
+                    return ControlDecision.NoAction.Instance;
                 }
             case State.P2:
-                if (random.NextDouble() <= p2probability.DecimalFractions)
+                if (random.NextDouble() <= p2probability)
                 {
-                    return new ControlDecision.RequestTransfer()
-                    {
-                        RequestedDirection = PacketTransferDirection.Incoming,
-                    };
+                    return ControlDecision.RequestTransfer.Incoming;
                 }
                 else
                 {
-                    return new ControlDecision.NoAction();
+                    return ControlDecision.NoAction.Instance;
                 }
             case State.P3:
-                if (random.NextDouble() <= p3probability.DecimalFractions)
+                if (random.NextDouble() <= p3probability)
                 {
-                    return new ControlDecision.RequestTransfer()
-                    {
-                        RequestedDirection = PacketTransferDirection.Incoming,
-                    };
+                    return ControlDecision.RequestTransfer.Incoming;
                 }
                 else
                 {
-                    return new ControlDecision.NoAction();
+                    return ControlDecision.NoAction.Instance;
                 }
             case State.BatteryHigh:
             {
-                loads = loads is ICollection<ILoad> list ? list : loads.ToList();
-                var interruptibles = loads.OfType<IInterruptibleLoad>();
-                foreach (var i in interruptibles)
+                foreach (var load in loads)
                 {
-                    if (i.IsCurrentlyInInterruptedState && i.CanCurrentlyBeResumed)
+                    if (load is IInterruptibleLoad { IsCurrentlyInInterruptedState: true, CanCurrentlyBeResumed: true } i)
                     {
                         i.Resume();
                     }
                 }
-                    
-                return new ControlDecision.RequestTransfer()
-                {
-                    RequestedDirection = PacketTransferDirection.Outgoing,
-                };
+
+                return ControlDecision.RequestTransfer.Outgoing;
             }
         }
 
-        return new ControlDecision.NoAction();
+        return ControlDecision.NoAction.Instance;
     }
 
-    public override string Name => nameof(ProbabilisticModelingControl);
+    public override string Name => "TCL Control";
 
     public override string Configuration => string.Create(CultureInfo.InvariantCulture,
         $"[{this.probabilisticModeLowerLevel.DecimalFractions:F2}, {this.probabilisticModeUpperLevel.DecimalFractions:F2}]");
@@ -282,5 +263,66 @@ public class ProbabilisticModelingControl : GuardedStrategy, IEpDeviceController
         BatteryWithinLimits,
         TransferAccepted,
         TransferDenied,
+    }
+
+    public class StateMachine
+    {
+        public StateMachine(State initialState)
+        {
+            this.State = initialState;
+        }
+
+        public State State { get; private set; }
+
+        public void Fire(Event trigger)
+        {
+            switch (this.State)
+            {
+                case State.BatteryLow:
+                    this.State = trigger switch
+                    {
+                        Event.BatteryWithinLimits => State.P1,
+                        Event.BatteryAboveSetpoint => State.BatteryHigh,
+                        _ => this.State,
+                    };
+                    break;
+                case State.P1:
+                    this.State = trigger switch
+                    {
+                        Event.TransferDenied => State.P2,
+                        Event.BatteryBelowSetpoint => State.BatteryLow,
+                        Event.BatteryAboveSetpoint => State.BatteryHigh,
+                        _ => this.State,
+                    };
+                    break;
+                case State.P2:
+                    this.State = trigger switch
+                    {
+                        Event.TransferAccepted => State.P1,
+                        Event.TransferDenied => State.P3,
+                        Event.BatteryBelowSetpoint => State.BatteryLow,
+                        Event.BatteryAboveSetpoint => State.BatteryHigh,
+                        _ => this.State,
+                    };
+                    break;
+                case State.P3:
+                    this.State = trigger switch
+                    {
+                        Event.TransferAccepted => State.P2,
+                        Event.BatteryBelowSetpoint => State.BatteryLow,
+                        Event.BatteryAboveSetpoint => State.BatteryHigh,
+                        _ => this.State,
+                    };
+                    break;
+                case State.BatteryHigh:
+                    this.State = trigger switch
+                    {
+                        Event.BatteryWithinLimits => State.P3,
+                        Event.BatteryBelowSetpoint => State.BatteryLow,
+                        _ => this.State,
+                    };
+                    break;
+            }
+        }
     }
 }

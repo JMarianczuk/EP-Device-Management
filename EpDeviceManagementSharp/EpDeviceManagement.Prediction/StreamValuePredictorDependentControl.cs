@@ -1,4 +1,5 @@
 ﻿using EpDeviceManagement.Contracts;
+using EpDeviceManagement.Control.Extensions;
 using EpDeviceManagement.UnitsExtensions;
 
 using UnitsNet;
@@ -28,12 +29,12 @@ public class StreamValuePredictorDependentControl : IEpDeviceController
     public ControlDecision DoControl(
         int dataPoint,
         TimeSpan timeStep,
-        IEnumerable<ILoad> loads,
-        IEnumerable<IGenerator> generators,
+        ILoad[] loads,
+        IGenerator[] generators,
         TransferResult lastTransferResult)
     {
-        var currentLoad = loads.Select(Power).Sum();
-        var currentGeneration = generators.Select(Power).Sum();
+        var currentLoad = loads.Sum();
+        var currentGeneration = generators.Sum();
         this.loadsPredictor.ReportCurrentValue(currentLoad);
         this.generationPredictor.ReportCurrentValue(currentGeneration);
         return this.strategy.DoControl(
@@ -44,7 +45,7 @@ public class StreamValuePredictorDependentControl : IEpDeviceController
             lastTransferResult);
     }
 
-    private static Power Power(ILoad load) => load.CurrentDemand;
+    private static Power Power(ILoad load) => load.MomentaneousDemand;
 
-    private static Power Power(IGenerator gen) => gen.CurrentGeneration;
+    private static Power Power(IGenerator gen) => gen.MomentaneousGeneration;
 }

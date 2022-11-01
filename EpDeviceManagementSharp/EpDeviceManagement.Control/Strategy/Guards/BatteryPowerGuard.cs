@@ -1,4 +1,5 @@
 ﻿using EpDeviceManagement.Contracts;
+using EpDeviceManagement.Control.Extensions;
 using UnitsNet;
 
 namespace EpDeviceManagement.Control.Strategy.Guards;
@@ -14,10 +15,10 @@ public sealed class BatteryPowerGuard : BatteryGuardBase, IControlGuard
     {
     }
 
-    public bool CanRequestIncoming(TimeSpan timeStep, IEnumerable<ILoad> loads, IEnumerable<IGenerator> generators)
+    public bool CanRequestIncoming(TimeSpan timeStep, ILoad[] loads, IGenerator[] generators)
     {
-        var expectedDischargePower = GetLoadsPower(loads)
-                                     - GetGeneratorsPower(generators)
+        var expectedDischargePower = loads.Sum()
+                                     - generators.Sum()
                                      - this.PacketSize / timeStep;
         if (expectedDischargePower > Power.Zero)
         {
@@ -30,10 +31,10 @@ public sealed class BatteryPowerGuard : BatteryGuardBase, IControlGuard
         }
     }
 
-    public bool CanRequestOutgoing(TimeSpan timeStep, IEnumerable<ILoad> loads, IEnumerable<IGenerator> generators)
+    public bool CanRequestOutgoing(TimeSpan timeStep, ILoad[] loads, IGenerator[] generators)
     {
-        var expectedDischargePower = GetLoadsPower(loads)
-                                     - GetGeneratorsPower(generators)
+        var expectedDischargePower = loads.Sum()
+                                     - generators.Sum()
                                      + this.PacketSize / timeStep;
         if (expectedDischargePower > Power.Zero)
         {
