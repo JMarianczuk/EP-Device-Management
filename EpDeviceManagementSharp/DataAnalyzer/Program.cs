@@ -8,5 +8,7 @@ using EpDeviceManagement.Data;
 using UnitsNet;
 
 //await Analyzer.AnalyzeDifferenceAsync();
+//await Analyzer.AnalyzeDifferenceBetween1And15MinutesPower();
 //await Forecasting.WriteDataAsync();
+//await PowerCalculator.CalculateAsync();
 await Analyzer.CalculateStatsAsync();

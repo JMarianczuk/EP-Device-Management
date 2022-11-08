@@ -1,5 +1,6 @@
 ﻿using System.Globalization;
 using EpDeviceManagement.Simulation;
+using Microsoft.CodeAnalysis;
 using Microsoft.Data.Sqlite;
 using UnitsNet;
 
@@ -12,10 +13,53 @@ public class Analyzer
         //var enhanced = TestData.GetDataSets
     }
 
+    public static async Task AnalyzeDifferenceBetween1And15MinutesPower()
+    {
+        var timeStep = TimeSpan.FromMinutes(5);
+        IList<DataSet> data;
+        using (var progress = new ConsoleProgressBar())
+        {
+            data = await TestData.GetDataSetsAsync(timeStep, progress, extended: true);
+        }
+
+        foreach (var ds in data)
+        {
+            double maxLoadDiffKw = -1d;
+            double maxGenDiffKw = -1d;
+            DateTimeOffset loadTime = default;
+            DateTimeOffset genTime = default;
+
+            foreach (var entry in ds.Data)
+            {
+                var loadDiff = Math.Abs(
+                    (ds.GetLoadsTotalPower(entry) - ds.GetMomentaneousLoadsPower(entry)).Kilowatts);
+                var genDiff = Math.Abs(
+                    (ds.GetGeneratorsTotalPower(entry) - ds.GetMomentaneousGeneratorsPower(entry)).Kilowatts);
+                if (loadDiff > maxLoadDiffKw)
+                {
+                    maxLoadDiffKw = loadDiff;
+                    loadTime = entry.Timestamp;
+                }
+
+                if (genDiff > maxGenDiffKw)
+                {
+                    maxGenDiffKw = genDiff;
+                    genTime = entry.Timestamp;
+                }
+            }
+
+            Console.WriteLine($"Data set {ds.Configuration} differs by {maxLoadDiffKw} kW for loads at {loadTime} and {maxGenDiffKw} kW at {genTime}");
+        }
+    }
+
     public static async Task CalculateStatsAsync()
     {
-        var timeStep = TimeSpan.FromMinutes(15);
-        var data = await TestData.GetDataSetsAsync(timeStep, new NoProgress());
+        var timeStep = TimeSpan.FromMinutes(5);
+        IList<DataSet> data;
+        using (var progress = new ConsoleProgressBar())
+        {
+            data = await TestData.GetDataSetsAsync(timeStep, progress, extended: true);
+        }
         var resultDir = GetResultDir();
         await using (var conn = new SqliteConnection($"Data Source={Path.Combine(resultDir.FullName, "results.sqlite")}"))
         {
@@ -35,10 +79,13 @@ CREATE TABLE
                 ",
                 conn);
             await tableCommand.ExecuteNonQueryAsync();
-            foreach (var batteryCapacityKwh in new[] {10d, 15d})
+            foreach (var batteryConfiguration in TestData.GetBatteries())
             {
                 foreach (var ds in data)
                 {
+                    var battery = batteryConfiguration.CreateBattery();
+                    var batteryCapacityKwh = battery.TotalCapacity.KilowattHours;
+
                     var totalIncomingKwh = 0d;
                     var totalOutgoingKwh = 0d;
                     var batteryKwh = batteryCapacityKwh / 2;
@@ -74,7 +121,7 @@ CREATE TABLE
 
                     var insertCommand = new SqliteCommand(
                         string.Create(CultureInfo.InvariantCulture,
-                            @$"INSERT INTO data_stat VALUES (""{ds.Configuration}"", {batteryCapacityKwh}, {totalIncomingKwh}, {totalOutgoingKwh})"),
+                            @$"INSERT INTO data_stat VALUES (""{ds.Configuration}"", ""{batteryConfiguration.Description}"", {totalIncomingKwh}, {totalOutgoingKwh})"),
                         conn);
                     await insertCommand.ExecuteNonQueryAsync();
                 }

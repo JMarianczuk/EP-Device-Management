@@ -1,6 +1,7 @@
 ﻿using CsvHelper.Configuration;
 using CsvHelper;
 using System.Globalization;
+using CsvHelper.TypeConversion;
 using EpDeviceManagement.Data;
 using UnitsNet;
 
@@ -10,14 +11,22 @@ public class PowerCalculator
 {
     public static async Task CalculateAsync()
     {
-        var files = new[]{1, 15, 60};
+        var files = new[]
+        {
+            1,
+            5,
+            15,
+            60,
+        };
         foreach (var f in files)
         {
             Console.WriteLine($"Writing {f}min");
             using var reader = new StreamReader($"household_data_{f}min_singleindex.csv");
-            using var csvReader = new CsvReader(reader, new CsvConfiguration(CultureInfo.InvariantCulture));
+            var csvConfiguration = new CsvConfiguration(CultureInfo.InvariantCulture);
+            using var csvReader = new CsvReader(reader, csvConfiguration);
             await using var writer = new StreamWriter($"household_data_{f}min_power.csv");
-            await using var csvWriter = new CsvWriter(writer, new CsvConfiguration(CultureInfo.InvariantCulture));
+            await using var csvWriter = new CsvWriter(writer, csvConfiguration);
+            csvWriter.Context.TypeConverterCache.AddConverter<DateTimeOffset>(new DateTimeOffsetTypeConverter());
 
             var timeStep = TimeSpan.FromMinutes(f);
 
@@ -108,9 +117,23 @@ public class PowerCalculator
             await foreach (var energy in input)
             {
                 var power = new PowerDataSet();
-                power.cet_cest_timestamp = energy.cet_cest_timestamp;
-                power.utc_timestamp = energy.utc_timestamp;
-                power.interpolated = energy.interpolated;
+                if (last.utc_timestamp == default)
+                {
+                    power.cet_cest_timestamp = energy.cet_cest_timestamp - timeStep;
+                    power.utc_timestamp = energy.utc_timestamp - timeStep;
+                    power.interpolated = string.Empty;
+                }
+                else
+                {
+                    power.cet_cest_timestamp = last.cet_cest_timestamp;
+                    power.utc_timestamp = last.utc_timestamp;
+                    power.interpolated = last.interpolated;
+
+                    last.cet_cest_timestamp = energy.cet_cest_timestamp;
+                    last.utc_timestamp = energy.utc_timestamp;
+                    last.interpolated = energy.interpolated;
+                }
+                
                 foreach (var (ep, pp) in properties)
                 {
                     var last_entry = (double)ep.GetValue(last);
