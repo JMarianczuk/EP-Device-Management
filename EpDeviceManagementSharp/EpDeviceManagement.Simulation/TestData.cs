@@ -86,6 +86,7 @@ public class TestData
                     config.PacketSize,
                     lower,
                     upper,
+                    config.DataSet.HasGeneration,
                     o));
                 strategies.Add((config, o) => new ProbabilisticModelingControl(
                     config.Battery,
@@ -93,6 +94,15 @@ public class TestData
                     lower,
                     upper,
                     config.Random,
+                    config.DataSet.HasGeneration,
+                    o));
+                strategies.Add((config, o) => new TclControl2(
+                    config.Battery,
+                    config.PacketSize,
+                    lower,
+                    upper,
+                    config.Random,
+                    config.DataSet.HasGeneration,
                     o));
                 strategies.Add((config, o) => new LinearProbabilisticFunctionControl(
                     config.Battery,
@@ -100,6 +110,7 @@ public class TestData
                     lower,
                     upper,
                     config.Random,
+                    config.DataSet.HasGeneration,
                     o));
                 strategies.Add((config, o) => new LinearProbabilisticEstimationFunctionControl(
                     config.Battery,
@@ -107,6 +118,7 @@ public class TestData
                     lower,
                     upper,
                     config.Random,
+                    config.DataSet.HasGeneration,
                     o));
                 for (int packetPortionPercent = 0; packetPortionPercent <= (left == right ? 0 : 5); packetPortionPercent += 1)
                 {
@@ -121,6 +133,7 @@ public class TestData
                             portion,
                             withEstimation,
                             config.Random,
+                            config.DataSet.HasGeneration,
                             o));
                     }
                 }
@@ -219,6 +232,7 @@ public class TestData
                 Data = enhancedData,
                 GetLoadsTotalPower = d => d.Residential1_Load,
                 GetGeneratorsTotalPower = d => d.Residential1_Generation,
+                HasGeneration = true,
             },
             new DataSet()
             {
@@ -226,6 +240,7 @@ public class TestData
                 Data = enhancedData,
                 GetLoadsTotalPower = d => d.Residential1_Load,
                 GetGeneratorsTotalPower = _ => Power.Zero,
+                HasGeneration = false,
             },
             //new DataSet()
             //{
@@ -233,6 +248,7 @@ public class TestData
             //    Data = enhancedData,
             //    GetLoadsTotalPower = d => d.Residential4_Load + d.Residential4_ControllableLoad,
             //    GetGeneratorsTotalPower = d => d.Residential4_Generation,
+            //    HasGeneration = true,
             //},
             //new DataSet()
             //{
@@ -259,6 +275,7 @@ public class TestData
                     Data = enhancedData,
                     GetLoadsTotalPower = d => d.Residential3_Load,
                     GetGeneratorsTotalPower = d => d.Residential3_Generation,
+                    HasGeneration = true,
                 });
             dataSets.Add(
                 new DataSet()
@@ -283,6 +300,7 @@ public class TestData
             //        Data = enhancedData,
             //        GetLoadsTotalPower = d => d.Industrial3_Load + d.Industrial3_ControllableLoad,
             //        GetGeneratorsTotalPower = d => d.Industrial3_Generation,
+            //        HasGeneration = true,
             //    });
             //dataSets.Add(
             //    new DataSet()
@@ -299,6 +317,7 @@ public class TestData
             //        Data = enhancedData,
             //        GetLoadsTotalPower = d => d.Residential4_Load + d.Residential4_ControllableLoad,
             //        GetGeneratorsTotalPower = d => d.Residential4_Generation * 2,
+            //        HasGeneration = true,
             //    });
             //dataSets.Add(
             //    new DataSet()
@@ -307,6 +326,7 @@ public class TestData
             //        Data = enhancedData,
             //        GetLoadsTotalPower = d => d.Residential1_Load,
             //        GetGeneratorsTotalPower = d => d.Residential1_Generation * 2,
+            //        HasGeneration = true,
             //    });
         }
 

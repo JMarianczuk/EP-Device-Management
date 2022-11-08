@@ -19,8 +19,9 @@ public class DirectionAwareLinearProbabilisticFunctionControl : LinearProbabilis
         Ratio loadLimitPortionOfPacketSize,
         bool withEstimation,
         RandomNumberGenerator random,
+        bool withGeneration,
         bool withOscillationGuard)
-        : base(battery, packetSize, lowerLevel, upperLevel, random, withOscillationGuard)
+        : base(battery, packetSize, lowerLevel, upperLevel, random, withGeneration, withOscillationGuard)
     {
         this.withEstimation = withEstimation;
         this.loadLimitPortionOfPacketSize = (decimal) loadLimitPortionOfPacketSize.DecimalFractions;

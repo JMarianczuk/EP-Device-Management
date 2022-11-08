@@ -22,6 +22,7 @@ public abstract class SingleStateProbabilisticFunctionControl : GuardedStrategy,
         Ratio lowerLevel,
         Ratio upperLevel,
         RandomNumberGenerator random,
+        bool withGeneration,
         bool withOscillationGuard)
         : base(
             new BatteryCapacityGuard(battery, packetSize),
@@ -32,7 +33,8 @@ public abstract class SingleStateProbabilisticFunctionControl : GuardedStrategy,
         this.upperLevel = upperLevel;
         this.random = random;
         this.Battery = battery;
-        PacketSize = packetSize;
+        this.PacketSize = packetSize;
+        this.WithGeneration = withGeneration;
 
         this.LowerLimit = battery.TotalCapacity * lowerLevel.DecimalFractions;
         this.UpperLimit = battery.TotalCapacity * upperLevel.DecimalFractions;
@@ -42,6 +44,8 @@ public abstract class SingleStateProbabilisticFunctionControl : GuardedStrategy,
     protected IStorage Battery { get; }
 
     protected Energy PacketSize { get; }
+
+    protected bool WithGeneration { get; }
 
     protected Energy LowerLimit { get; }
     
@@ -84,7 +88,8 @@ public abstract class SingleStateProbabilisticFunctionControl : GuardedStrategy,
         else if (this.AssumedCurrentBatterySoC < this.UpperLimit)
         {
             var probability = this.GetProbabilityForUpperHalf(timeStep);
-            if (random.NextDouble() <= probability)
+            if (this.WithGeneration
+                && random.NextDouble() <= probability)
             {
                 return ControlDecision.RequestTransfer.Outgoing;
             }
@@ -95,7 +100,14 @@ public abstract class SingleStateProbabilisticFunctionControl : GuardedStrategy,
         }
         else
         {
-            return ControlDecision.RequestTransfer.Outgoing;
+            if (this.WithGeneration)
+            {
+                return ControlDecision.RequestTransfer.Outgoing;
+            }
+            else
+            {
+                return ControlDecision.NoAction.Instance;
+            }
         }
     }
 

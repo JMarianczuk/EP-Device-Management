@@ -12,8 +12,16 @@ public class LinearProbabilisticFunctionControl : SingleStateProbabilisticFuncti
         Ratio lowerLevel,
         Ratio upperLevel,
         RandomNumberGenerator random,
+        bool withGeneration,
         bool withOscillationGuard)
-        : base(battery, packetSize, lowerLevel, upperLevel, random, withOscillationGuard)
+        : base(
+            battery,
+            packetSize,
+            lowerLevel,
+            upperLevel,
+            random,
+            withGeneration,
+            withOscillationGuard)
     {
     }
 

@@ -27,6 +27,8 @@ public class DataSet
 
     public string Configuration { get; init; } = string.Empty;
 
+    public bool HasGeneration { get; init; } = false;
+
     public Func<EnhancedPowerDataSet, Power> GetLoadsTotalPower
     {
         get => this.getLoadsTotalPower;

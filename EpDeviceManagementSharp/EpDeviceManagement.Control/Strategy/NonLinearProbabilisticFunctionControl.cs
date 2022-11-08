@@ -14,8 +14,9 @@ public class NonLinearProbabilisticFunctionControl : SingleStateProbabilisticFun
         Ratio upperLevel,
         RandomNumberGenerator random,
         TimeSpan meanTimeToResponse,
+        bool withGeneration,
         bool withOscillationGuard)
-        : base(battery, packetSize, lowerLevel, upperLevel, random, withOscillationGuard)
+        : base(battery, packetSize, lowerLevel, upperLevel, random, withGeneration, withOscillationGuard)
     {
         this.mttr = meanTimeToResponse;
     }

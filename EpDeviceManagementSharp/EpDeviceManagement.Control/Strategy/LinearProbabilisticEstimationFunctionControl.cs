@@ -8,11 +8,22 @@ namespace EpDeviceManagement.Control.Strategy;
 
 public class LinearProbabilisticEstimationFunctionControl : LinearProbabilisticFunctionControl
 {
-    public LinearProbabilisticEstimationFunctionControl(IStorage battery, Energy packetSize, Ratio lowerLevel,
+    public LinearProbabilisticEstimationFunctionControl(
+        IStorage battery,
+        Energy packetSize,
+        Ratio lowerLevel,
         Ratio upperLevel,
         RandomNumberGenerator random,
+        bool withGeneration,
         bool withOscillationGuard)
-        : base(battery, packetSize, lowerLevel, upperLevel, random, withOscillationGuard)
+        : base(
+            battery,
+            packetSize,
+            lowerLevel,
+            upperLevel,
+            random,
+            withGeneration,
+            withOscillationGuard)
     {
         this.assumedCurrentBatterySoC = battery.CurrentStateOfCharge;
     }

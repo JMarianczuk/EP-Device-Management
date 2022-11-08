@@ -8,7 +8,7 @@ using UnitsNet;
 
 namespace EpDeviceManagement.Control.Strategy;
 
-public class ProbabilisticModelingControl : GuardedStrategy, IEpDeviceController
+public class TclControl2 : GuardedStrategy, IEpDeviceController
 {
     private readonly Ratio probabilisticModeLowerLevel;
     private readonly Ratio probabilisticModeUpperLevel;
@@ -17,11 +17,9 @@ public class ProbabilisticModelingControl : GuardedStrategy, IEpDeviceController
     private readonly StateMachine stateMachine;
     private readonly RandomNumberGenerator random;
     private readonly bool withGeneration;
-    private readonly double p1probability;
-    private readonly double p2probability;
-    private readonly double p3probability;
+    private readonly TimeSpan[] MttrByState;
 
-    public ProbabilisticModelingControl(
+    public TclControl2(
         IStorage battery,
         Energy packetSize,
         Ratio probabilisticModeLowerLevel,
@@ -37,10 +35,12 @@ public class ProbabilisticModelingControl : GuardedStrategy, IEpDeviceController
         Battery = battery;
         this.random = random;
         this.withGeneration = withGeneration;
-
-        p1probability = Ratio.FromPercent(70).DecimalFractions;
-        p2probability = Ratio.FromPercent(50).DecimalFractions;
-        p3probability = Ratio.FromPercent(30).DecimalFractions;
+        this.MttrByState = new[]
+        {
+            TimeSpan.FromMinutes(5),
+            TimeSpan.FromMinutes(10),
+            TimeSpan.FromMinutes(15),
+        };
 
         if (probabilisticModeUpperLevel < probabilisticModeLowerLevel)
         {
@@ -80,6 +80,23 @@ public class ProbabilisticModelingControl : GuardedStrategy, IEpDeviceController
 
     private IStorage Battery { get; }
 
+    private double GetProbability(TimeSpan timeStep, int state, bool outgoing = false)
+    {
+        var currentStateOfCharge = this.Battery.CurrentStateOfCharge;
+        var distanceFromUpperLimit = this.probabilisticModeUpperLimit - currentStateOfCharge;
+        var distanceFromLowerLimit = currentStateOfCharge - this.probabilisticModeLowerLimit;
+        var ratio = distanceFromUpperLimit / distanceFromLowerLimit;
+        if (outgoing)
+        {
+            ratio = 1 / ratio;
+        }
+        var mttr = this.MttrByState[state - 1];
+        var M_i = Frequency.FromHertz(1 / (2 * mttr.TotalSeconds));
+        var mu = ratio * M_i;
+        var P_i = 1 - Math.Exp(-mu.Hertz * timeStep.TotalSeconds);
+        return P_i;
+    }
+
     protected override ControlDecision DoUnguardedControl(
         int dataPoint,
         TimeSpan timeStep,
@@ -87,11 +104,11 @@ public class ProbabilisticModelingControl : GuardedStrategy, IEpDeviceController
         IGenerator[] generators,
         TransferResult transferResult)
     {
-        if (this.Battery.CurrentStateOfCharge > probabilisticModeUpperLimit)
+        if (this.Battery.CurrentStateOfCharge >= probabilisticModeUpperLimit)
         {
             stateMachine.Fire(Event.BatteryAboveSetpoint);
         }
-        else if (this.Battery.CurrentStateOfCharge < probabilisticModeLowerLimit)
+        else if (this.Battery.CurrentStateOfCharge <= probabilisticModeLowerLimit)
         {
             stateMachine.Fire(Event.BatteryBelowSetpoint);
         }
@@ -112,6 +129,27 @@ public class ProbabilisticModelingControl : GuardedStrategy, IEpDeviceController
                 break;
         }
 
+        ControlDecision GetDecision(int state)
+        {
+            var pr = random.NextDouble();
+            var incomingProbability = GetProbability(timeStep, state);
+            var outgoingProbability = GetProbability(timeStep, state, outgoing: true);
+            var requestIncoming = pr <= incomingProbability;
+            var requestOutgoing = this.withGeneration && pr <= outgoingProbability;
+            if (requestIncoming && !requestOutgoing)
+            {
+                return ControlDecision.RequestTransfer.Incoming;
+            }
+            else if (!requestIncoming && requestOutgoing)
+            {
+                return ControlDecision.RequestTransfer.Outgoing;
+            }
+            else
+            {
+                return ControlDecision.NoAction.Instance;
+            }
+        }
+
         switch (stateMachine.State)
         {
             case State.BatteryLow:
@@ -127,42 +165,28 @@ public class ProbabilisticModelingControl : GuardedStrategy, IEpDeviceController
                 return ControlDecision.RequestTransfer.Incoming;
             }
             case State.P1:
-                if (random.NextDouble() <= p1probability)
-                {
-                    return ControlDecision.RequestTransfer.Incoming;
-                }
-                else
-                {
-                    return ControlDecision.NoAction.Instance;
-                }
+                return GetDecision(1);
             case State.P2:
-                if (random.NextDouble() <= p2probability)
-                {
-                    return ControlDecision.RequestTransfer.Incoming;
-                }
-                else
-                {
-                    return ControlDecision.NoAction.Instance;
-                }
+                return GetDecision(2);
             case State.P3:
-                if (random.NextDouble() <= p3probability)
-                {
-                    return ControlDecision.RequestTransfer.Incoming;
-                }
-                else
-                {
-                    return ControlDecision.NoAction.Instance;
-                }
+                return GetDecision(3);
             case State.BatteryHigh:
             {
-                return ControlDecision.NoAction.Instance;
+                if (this.withGeneration)
+                {
+                    return ControlDecision.RequestTransfer.Outgoing;
+                }
+                else
+                {
+                    return ControlDecision.NoAction.Instance;
+                }
             }
         }
 
         return ControlDecision.NoAction.Instance;
     }
 
-    public override string Name => "TCL Control";
+    public override string Name => "TCL Control 2";
 
     public override string Configuration => string.Create(CultureInfo.InvariantCulture,
         $"[{this.probabilisticModeLowerLevel.DecimalFractions:F2}, {this.probabilisticModeUpperLevel.DecimalFractions:F2}]");

@@ -10,6 +10,7 @@ public class AimForSpecificBatteryRange : GuardedStrategy, IEpDeviceController
 {
     private readonly Ratio desiredMinimumLevel;
     private readonly Ratio desiredMaximumLevel;
+    private readonly bool withGeneration;
     private readonly Energy desiredMinimumStateOfCharge;
     private readonly Energy desiredMaximumStateOfCharge;
 
@@ -18,6 +19,7 @@ public class AimForSpecificBatteryRange : GuardedStrategy, IEpDeviceController
         Energy packetSize,
         Ratio desiredMinimumLevel,
         Ratio desiredMaximumLevel,
+        bool withGeneration,
         bool withOscillationGuard = true)
         : base(
             new BatteryCapacityGuard(battery, packetSize),
@@ -46,6 +48,7 @@ public class AimForSpecificBatteryRange : GuardedStrategy, IEpDeviceController
 
         this.desiredMinimumLevel = desiredMinimumLevel;
         this.desiredMaximumLevel = desiredMaximumLevel;
+        this.withGeneration = withGeneration;
         this.desiredMinimumStateOfCharge = battery.TotalCapacity * desiredMinimumLevel.DecimalFractions;
         this.desiredMaximumStateOfCharge = battery.TotalCapacity * desiredMaximumLevel.DecimalFractions;
     }
@@ -63,7 +66,8 @@ public class AimForSpecificBatteryRange : GuardedStrategy, IEpDeviceController
         {
             return ControlDecision.RequestTransfer.Incoming;
         }
-        else if (this.Battery.CurrentStateOfCharge > desiredMaximumStateOfCharge)
+        else if (this.Battery.CurrentStateOfCharge > desiredMaximumStateOfCharge
+                 && this.withGeneration)
         {
             return ControlDecision.RequestTransfer.Outgoing;
         }
