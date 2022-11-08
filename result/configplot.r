@@ -7,9 +7,9 @@ source("r_helpers/array_helpers.r")
 
 con <- create_db_connection()
 
-data_configurations <- dbGetQuery(con, "select data from simulation group by data")
-time_steps <- dbGetQuery(con, "select timeStep from simulation group by timeStep")
-strategy_names <- dbGetQuery(con, "select strategy from simulation group by strategy")
+data_configurations <- dbGetQuery(con, "select data from simulation group by data")[,1]
+time_steps <- dbGetQuery(con, "select timeStep from simulation group by timeStep")[,1]
+strategy_names <- dbGetQuery(con, "select strategy from simulation group by strategy")[,1]
 
 number_of_packet_sizes <- dbGetQuery(con, "select count(distinct(packetSize)) from simulation")[1, 1]
 number_of_probabilities <- dbGetQuery(con, "select count(distinct(probability)) from simulation")[1, 1]
@@ -18,7 +18,9 @@ number_of_combinations <- number_of_batteries * number_of_packet_sizes * number_
 
 
 exists_successful <- function(strat_name) {
-    where <- get_where(strat_name = strat_name)
+    where <- get_where(
+        success = "True",
+        strategy = strat_name)
     query <- paste("select count(*) as num from simulation", where)
     res <- dbGetQuery(con, query)
     number <- res[1, 1]
@@ -27,7 +29,9 @@ exists_successful <- function(strat_name) {
 }
 
 get_query <- function(strat_name) {
-    where <- get_where(strat_name = strat_name)
+    where <- get_where(
+        success = "True",
+        strategy = strat_name)
     query <- paste(
         "select",
         "*,",
@@ -59,8 +63,7 @@ do_plot <- function(strat_name, title, file_name) {
     ggsave(file_name, thisplot, width = 25, height = 10, units = "cm")
 }
 
-for (strategy in 1:nrow(strategy_names)) {
-    strat_name <- strategy_names[strategy, 1]
+for (strat_name in strategy_names) {
     if (exists_successful(strat_name)) {
         do_plot(
             strat_name,
@@ -68,7 +71,7 @@ for (strategy in 1:nrow(strategy_names)) {
                 "simulating",
                 strat_name),
             paste(
-                "configplot_",
+                "plots/configplot_",
                 normalize(strat_name),
                 ".pdf"))
     }

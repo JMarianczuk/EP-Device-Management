@@ -6,40 +6,70 @@ library(stringr)
 source("r_helpers/sql_helpers.r")
 source("r_helpers/string_helpers.r")
 source("r_helpers/array_helpers.r")
+source("r_helpers/colour_helpers.r")
+
+source("preprocessing/successful_counts.r")
 
 con <- create_db_connection()
 
-data_configurations <- dbGetQuery(con, "select data from simulation group by data")
-batteries <- dbGetQuery(con, "select battery from simulation group by battery")
-time_steps <- dbGetQuery(con, "select timeStep from simulation group by timeStep")
+preprocess_successful_counts(
+    by = c("packetSize", "probability", "battery", "data", "timestep"),
+    "ppbdt",
+    con)
+preprocess_successful_counts(
+    by = c("strategy", "packetSize", "probability", "battery", "data", "timestep"),
+    "sppbdt",
+    con)
+
+data_configurations <- dbGetQuery(con, "select data from simulation group by data")[,1]
+batteries <- dbGetQuery(con, "select battery from simulation group by battery")[,1]
+time_steps <- dbGetQuery(con, "select timeStep from simulation group by timeStep")[,1]
 
 get_query <- function(data_name, battery_name, timestep_name) {
-    success_where <- 'success="True"'
-    data_where <- paste('data="', data_name, '"', sep = "")
-    battery_where <- paste('battery="', battery_name, '"', sep = "")
-    timestep_where <- paste('timeStep="', timestep_name, '"', sep = "")
-    where <- paste("where", success_where, "and", data_where, "and", battery_where, "and", timestep_where)
+    where <- get_where(
+        success = "True",
+        data = data_name,
+        battery = battery_name,
+        timeStep = timestep_name
+    )
     query <- paste(
         "select",
-        "*, count(*) as size",
-        "from simulation",
-        where,
-        "group by strategy, probability, packetSize")
+        "*",
+        "from successful_counts_sppbdt",
+        where)
+    query
+}
+
+get_query2 <- function(data_name, battery_name, timestep_name) {
+    where <- get_where(
+        success = "True",
+        data = data_name,
+        battery = battery_name,
+        timeStep = timestep_name
+    )
+    query <- paste(
+        "select",
+        "*",
+        "from successful_counts_ppbdt",
+        where)
     query
 }
 
 do_plot <- function(data_name, battery_name, timestep_name, title, file_name) {
     res <- dbGetQuery(con, get_query(data_name, battery_name, timestep_name))
+    group_values_colours <- get_group_colours("strategy", res, con)
 
     thisplot <- ggplot(res, aes(
-        x = reorder(probability, probability_num_value(probability)),
+        x = probability,
         y = packetSize,
         colour = strategy,
         shape = strategy,
-        size = size)
+        size = count)
         ) +
         geom_jitter() +
-        labs(x = "probability", title = title, size = "number of successful control passes")
+        # geom_point() +
+        labs(x = "probability", title = title, size = "number of successful control passes") +
+        scale_colour_manual("strategy", values = group_values_colours)
 
     ggsave(file_name, thisplot, width = 25, height = 10, units = "cm")
 }
@@ -49,13 +79,9 @@ normalize <- function(text) {
     normalized
 }
 
-for (data in 1:nrow(data_configurations)) {
-    for (battery in 1:nrow(batteries)) {
-        for (timestep in 1:nrow(time_steps)) {
-            data_name <- data_configurations[data, 1]
-            battery_name <- batteries[battery, 1]
-            timestep_name <- time_steps[timestep, 1]
-
+for (data_name in data_configurations) {
+    for (battery_name in batteries) {
+        for (timestep_name in time_steps) {
             do_plot(
                 data_name,
                 battery_name,
@@ -67,15 +93,14 @@ for (data in 1:nrow(data_configurations)) {
                     battery_name,
                     ".",
                     timestep_name),
-                paste(
-                    "plot_",
+                paste0(
+                    "plots/plot_",
                     normalize(data_name),
                     "_",
                     normalize(battery_name),
                     "_",
                     normalize(timestep_name),
-                    ".pdf",
-                    sep = ""))
+                    ".pdf"))
         }
     }
 }
