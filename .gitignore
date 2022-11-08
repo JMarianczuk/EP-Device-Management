@@ -5,6 +5,7 @@
 enhanced.json
 *.sqlite
 result/results*.txt
+result/plots/*.pdf
 result/*.pdf
 graphs/*.pdf
 EpDeviceManagementSharp/EpDeviceManagement.Data/*.csv

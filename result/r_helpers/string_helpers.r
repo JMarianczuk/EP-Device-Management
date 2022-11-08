@@ -1,3 +1,4 @@
+source("r_helpers/array_helpers.r")
 
 normalize <- function(text) {
     normalized <- gsub(":", "-", text)
@@ -11,6 +12,12 @@ probability_num_value <- function(probability) {
 }
 
 format_percent <- function(number) {
-    formatted <- format(number * 100, digits = 1)
-    paste(formatted, "%", sep = "")
+    formatted <- format(round(number * 100, 1), nsmall = 1)
+    paste0(formatted, "%")
+}
+
+paste_if <- function(..., sep = " ", collapse = NULL, recycle0 = FALSE) {
+    as_vector <- c(...)
+    filtered <- vector_without(as_vector, "")
+    paste0(filtered, collapse = sep)
 }

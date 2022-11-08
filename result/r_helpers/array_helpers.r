@@ -10,3 +10,13 @@ first_greater_index <- function(arr, element) {
     }
     result
 }
+
+vector_without <- function(vector, element) {
+    result <- c()
+    for (value in vector) {
+        if (value != element) {
+            result <- append(result, value)
+        }
+    }
+    result
+}
