@@ -56,3 +56,13 @@ drop_preprocessed_tables <- function(con, filter = "") {
     }
     res <- dbExecute(con, paste("DELETE FROM PreprocessedViews", where))
 }
+
+reset_top_ten <- function(con) {
+    table_names <- dbGetQuery(con, paste("SELECT * FROM PreprocessedTables", get_where(and = "TableName like 'successful_counts_%'")))
+    for (table_name in table_names[,1]) {
+        dbExecute(con, paste(
+            "update",
+            table_name,
+            "set topTen=0, ordering=0"))
+    }
+}

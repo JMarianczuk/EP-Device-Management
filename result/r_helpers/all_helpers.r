@@ -1,6 +1,8 @@
 source("r_helpers/array_helpers.r")
 source("r_helpers/colour_helpers.r")
+source("r_helpers/font_helpers.r")
 source("r_helpers/functional_helpers.r")
 source("r_helpers/ggplot_helpers.r")
+source("r_helpers/pareto.r")
 source("r_helpers/sql_helpers.r")
 source("r_helpers/string_helpers.r")

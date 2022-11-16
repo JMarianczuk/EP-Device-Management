@@ -35,3 +35,19 @@ get_group_colours <- function(group, res, con, transform = function(x) { x }) {
     group_values_colours <- filter_legend(group_values_colours, group, res)
     group_values_colours
 }
+
+get_group_linetypes <- function(group, res, con, transform = function(x) { x }) {
+    group_values <- dbGetQuery(
+        con,
+        paste0(
+            "select ",
+            group,
+            " from distinct_",
+            group,
+            " where success = ",
+            '"True"'))[, 1]
+    group_values_linetype <- scale_linetype_discrete()$palette(length(group_values))
+    names(group_values_linetype) <- transform(group_values)
+    group_values_linetype <- filter_legend(group_values_linetype, group, res)
+    group_values_linetype
+}

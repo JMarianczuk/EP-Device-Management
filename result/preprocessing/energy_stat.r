@@ -45,4 +45,10 @@ preprocess_energy_stats <- function(con) {
     preprocess_energy_stats_single(con, by_b, "scdb")
     by <- append(by_b, "timeStep")
     preprocess_energy_stats_single(con, by, "scdbt")
+
+    by <- c("strategy", "guardConfiguration", "data", "battery")
+    preprocess_energy_stats_single(con, by, "sgdb")
+    by <- append(by, "timeStep")
+    preprocess_energy_stats_single(con, by, "sgdbt")
+
 }

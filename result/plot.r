@@ -9,6 +9,7 @@ source("r_helpers/array_helpers.r")
 source("r_helpers/colour_helpers.r")
 
 source("preprocessing/successful_counts.r")
+source("preprocessing/distinct_values.r")
 
 con <- create_db_connection()
 
@@ -21,9 +22,11 @@ preprocess_successful_counts(
     "sppbdt",
     con)
 
-data_configurations <- dbGetQuery(con, "select data from simulation group by data")[,1]
-batteries <- dbGetQuery(con, "select battery from simulation group by battery")[,1]
-time_steps <- dbGetQuery(con, "select timeStep from simulation group by timeStep")[,1]
+preprocess_distinct(con)
+
+data_configurations <- dbGetQuery(con, "select data from distinct_data")[,1]
+batteries <- dbGetQuery(con, "select battery from distinct_battery")[,1]
+time_steps <- dbGetQuery(con, "select timeStep from distinct_timeStep")[,1]
 
 get_query <- function(data_name, battery_name, timestep_name) {
     where <- get_where(

@@ -47,7 +47,8 @@ preprocess_distinct <- function(con) {
         "strategy",
         "packetSize",
         "probability",
-        "battery")) {
+        "battery",
+        "guardConfiguration")) {
         preprocess_distinct_single(con, column)
     }
     preprocess_distinct_dual(con, "strategy", "configuration")

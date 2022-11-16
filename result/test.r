@@ -1,11 +1,8 @@
 library(RSQLite)
+library(stringr)
+library(lubridate)
 
-source("r_helpers/sql_helpers.r")
-source("r_helpers/string_helpers.r")
-source("r_helpers/array_helpers.r")
-source("r_helpers/ggplot_helpers.r")
-source("r_helpers/colour_helpers.r")
-source("r_helpers/functional_helpers.r")
+source("r_helpers/all_helpers.r")
 
 source("preprocessing/successful_counts.r")
 source("preprocessing/distinct_values.r")
@@ -15,6 +12,7 @@ source("preprocessing/energy_stat.r")
 
 con <- create_db_connection()
 
+# drop_preprocessed_tables(con, filter = "TableName like 'simulation_with_%'")
 # preprocess_successful_counts(c("strategy", "configuration", "data", "timeStep"), "scdt", "")
 
 # preprocess_energy_counts("packetSize", "battery", con)
@@ -47,5 +45,13 @@ con <- create_db_connection()
 #     scale_colour_manual("team", values = colours, labels = label_wrap_gen(width = 29))
 #     # guides(colour = guide_legend(byrow = TRUE))
 # ggsave("test.pdf", thisplot)
-format_percent(0.13456)
-format_percent(0.42)
+#
+# text <- "Probabilistic Range Control + Direction + Estimation"
+# contains <- str_contains(text, "Direction")
+# contains <- str_contains(text, "Direeection")
+#
+# texts <- c("hi", "there", "hello there general kenobi")
+# get_where(quote_values = FALSE, data = "hello there")
+#
+# drop_preprocessed_tables(con, filter = "TableName like 'successful_counts_%'")
+reset_top_ten(con)
