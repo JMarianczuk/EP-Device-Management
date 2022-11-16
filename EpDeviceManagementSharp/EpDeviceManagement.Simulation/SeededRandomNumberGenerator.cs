@@ -21,3 +21,21 @@ public class SeededRandomNumberGenerator : RandomNumberGenerator
         this.random.NextBytes(data);
     }
 }
+
+public class CachedDoublesRandomNumberGenerator
+{
+    private readonly double[] precomputedDoubles;
+    private int step = 0;
+
+    public CachedDoublesRandomNumberGenerator(double[] precomputedDoubles)
+    {
+        this.precomputedDoubles = precomputedDoubles;
+    }
+
+    public double NextDouble()
+    {
+        var result = this.precomputedDoubles[this.step];
+        this.step += 1;
+        return result;
+    }
+}

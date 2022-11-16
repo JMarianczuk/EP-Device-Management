@@ -5,30 +5,29 @@ using UnitsNet;
 
 namespace EpDeviceManagement.Control.Strategy;
 
-public class AlwaysRequestOutgoingPackets : GuardedStrategy, IEpDeviceController
+public class AlwaysRequestOutgoingPackets : IEpDeviceController
 {
     public AlwaysRequestOutgoingPackets(
         IStorage battery,
         Energy packetSize)
-        : base(
-            new BatteryCapacityGuard(battery, packetSize),
-            new BatteryPowerGuard(battery, packetSize))
     {
     }
 
-    protected override ControlDecision DoUnguardedControl(
+    public ControlDecision DoControl(
         int dataPoint,
         TimeSpan timeStep,
-        ILoad[] loads,
-        IGenerator[] generators,
+        ILoad load,
+        IGenerator generator,
         TransferResult lastTransferResult)
     {
         return ControlDecision.RequestTransfer.Outgoing;
     }
 
-    public override string Name => "Always Request Outgoing";
+    public string Name => "Always Request Outgoing";
 
-    public override string Configuration => string.Empty;
+    public string Configuration => string.Empty;
 
-    public override string PrettyConfiguration => string.Empty;
+    public string PrettyConfiguration => string.Empty;
+
+    public bool RequestsOutgoingPackets => true;
 }

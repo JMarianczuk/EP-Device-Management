@@ -3,17 +3,18 @@ using System.Security.Cryptography;
 using EpDeviceManagement.Contracts;
 using EpDeviceManagement.Control.Strategy.Base;
 using EpDeviceManagement.Control.Strategy.Guards;
+using EpDeviceManagement.UnitsExtensions;
 using Stateless;
 using UnitsNet;
 
 namespace EpDeviceManagement.Control.Strategy;
 
-public class ProbabilisticModelingControl : GuardedStrategy, IEpDeviceController
+public class ProbabilisticModelingControl : IEpDeviceController
 {
     private readonly Ratio probabilisticModeLowerLevel;
     private readonly Ratio probabilisticModeUpperLevel;
-    private readonly Energy probabilisticModeUpperLimit;
-    private readonly Energy probabilisticModeLowerLimit;
+    private readonly EnergyFast probabilisticModeUpperLimit;
+    private readonly EnergyFast probabilisticModeLowerLimit;
     private readonly StateMachine stateMachine;
     private readonly RandomNumberGenerator random;
     private readonly bool withGeneration;
@@ -27,12 +28,7 @@ public class ProbabilisticModelingControl : GuardedStrategy, IEpDeviceController
         Ratio probabilisticModeLowerLevel,
         Ratio probabilisticModeUpperLevel,
         RandomNumberGenerator random,
-        bool withGeneration,
-        bool withOscillationGuard)
-        : base(
-            new BatteryCapacityGuard(battery, packetSize),
-            new BatteryPowerGuard(battery, packetSize),
-            withOscillationGuard ? new OscillationGuard() : DummyGuard.Instance)
+        bool withGeneration)
     {
         Battery = battery;
         this.random = random;
@@ -80,11 +76,11 @@ public class ProbabilisticModelingControl : GuardedStrategy, IEpDeviceController
 
     private IStorage Battery { get; }
 
-    protected override ControlDecision DoUnguardedControl(
+    public ControlDecision DoControl(
         int dataPoint,
         TimeSpan timeStep,
-        ILoad[] loads,
-        IGenerator[] generators,
+        ILoad load,
+        IGenerator generator,
         TransferResult transferResult)
     {
         if (this.Battery.CurrentStateOfCharge > probabilisticModeUpperLimit)
@@ -116,13 +112,10 @@ public class ProbabilisticModelingControl : GuardedStrategy, IEpDeviceController
         {
             case State.BatteryLow:
             {
-                foreach (var load in loads)
-                {
-                    if (load is IInterruptibleLoad { CanCurrentlyBeInterrupted: true, IsCurrentlyInInterruptedState: false } i)
-                    {
-                        i.Interrupt();
-                    }
-                }
+                //if (load is IInterruptibleLoad { CanCurrentlyBeInterrupted: true, IsCurrentlyInInterruptedState: false } i)
+                //{
+                //    i.Interrupt();
+                //}
 
                 return ControlDecision.RequestTransfer.Incoming;
             }
@@ -162,12 +155,14 @@ public class ProbabilisticModelingControl : GuardedStrategy, IEpDeviceController
         return ControlDecision.NoAction.Instance;
     }
 
-    public override string Name => "TCL Control";
+    public string Name => "State-Dependent Probabilistic Control";
 
-    public override string Configuration => string.Create(CultureInfo.InvariantCulture,
-        $"[{this.probabilisticModeLowerLevel.DecimalFractions:F2}, {this.probabilisticModeUpperLevel.DecimalFractions:F2}]");
+    public string Configuration => string.Create(CultureInfo.InvariantCulture,
+        $"[{this.probabilisticModeLowerLevel.DecimalFractions:F1}, {this.probabilisticModeUpperLevel.DecimalFractions:F1}]");
 
-    public override string PrettyConfiguration => $"[{probabilisticModeLowerLimit}, {probabilisticModeUpperLimit}]";
+    public string PrettyConfiguration => $"[{probabilisticModeLowerLimit}, {probabilisticModeUpperLimit}]";
+
+    public bool RequestsOutgoingPackets => this.withGeneration;
 
     public enum State
     {

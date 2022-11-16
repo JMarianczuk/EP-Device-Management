@@ -1,13 +1,14 @@
 ﻿using EpDeviceManagement.Contracts;
+using EpDeviceManagement.UnitsExtensions;
 using UnitsNet;
 
 namespace EpDeviceManagement.Simulation.Loads;
 
 public class ControllableGeneration : IControllableGenerator
 {
-    public Power CurrentGeneration { get; set; }
+    //public Power CurrentGeneration { get; set; }
 
-    public Power MomentaneousGeneration { get; set; }
+    public PowerFast MomentaryGeneration { get; set; }
 
     public bool IsGenerating { get; set; }
 
@@ -18,6 +19,6 @@ public class ControllableGeneration : IControllableGenerator
 
     public override string ToString()
     {
-        return $"Gen: {this.CurrentGeneration}";
+        return $"Gen: {this.MomentaryGeneration}";
     }
 }

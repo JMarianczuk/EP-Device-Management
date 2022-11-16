@@ -9,13 +9,13 @@ namespace EpDeviceManagement.Prediction;
 public class StreamValuePredictorDependentControl : IEpDeviceController
 {
     private readonly IEpDeviceController strategy;
-    private readonly StreamValuePredictor<Power> loadsPredictor;
-    private readonly StreamValuePredictor<Power> generationPredictor;
+    private readonly StreamValuePredictor<PowerFast> loadsPredictor;
+    private readonly StreamValuePredictor<PowerFast> generationPredictor;
 
     public StreamValuePredictorDependentControl(
         IEpDeviceController strategy,
-        StreamValuePredictor<Power> loadsPredictor,
-        StreamValuePredictor<Power> generationPredictor)
+        StreamValuePredictor<PowerFast> loadsPredictor,
+        StreamValuePredictor<PowerFast> generationPredictor)
     {
         this.strategy = strategy;
         this.loadsPredictor = loadsPredictor;
@@ -25,27 +25,28 @@ public class StreamValuePredictorDependentControl : IEpDeviceController
     public string Name => this.strategy.Name;
     public string Configuration => this.strategy.Configuration;
     public string PrettyConfiguration => this.strategy.PrettyConfiguration;
+    public bool RequestsOutgoingPackets => this.strategy.RequestsOutgoingPackets;
 
     public ControlDecision DoControl(
         int dataPoint,
         TimeSpan timeStep,
-        ILoad[] loads,
-        IGenerator[] generators,
+        ILoad load,
+        IGenerator generator,
         TransferResult lastTransferResult)
     {
-        var currentLoad = loads.Sum();
-        var currentGeneration = generators.Sum();
+        var currentLoad = load.MomentaryDemand;
+        var currentGeneration = generator.MomentaryGeneration;
         this.loadsPredictor.ReportCurrentValue(currentLoad);
         this.generationPredictor.ReportCurrentValue(currentGeneration);
         return this.strategy.DoControl(
             dataPoint,
             timeStep,
-            loads,
-            generators,
+            load,
+            generator,
             lastTransferResult);
     }
 
-    private static Power Power(ILoad load) => load.MomentaneousDemand;
+    private static PowerFast Power(ILoad load) => load.MomentaryDemand;
 
-    private static Power Power(IGenerator gen) => gen.MomentaneousGeneration;
+    private static PowerFast Power(IGenerator gen) => gen.MomentaryGeneration;
 }

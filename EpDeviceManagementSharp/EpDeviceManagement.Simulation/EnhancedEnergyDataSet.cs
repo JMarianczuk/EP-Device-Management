@@ -1,40 +1,26 @@
-﻿using UnitsNet;
+﻿using System.Diagnostics;
+using System.Net.Security;
+using EpDeviceManagement.UnitsExtensions;
+using UnitsNet;
 
 namespace EpDeviceManagement.Simulation;
 
+[DebuggerDisplay("{" + nameof(Timestamp) + "}")]
 public class EnhancedEnergyDataSet
 {
     public DateTimeOffset Timestamp { get; init; }
 
-    //public Power Residential1_Dishwasher { get; init; }
+    public PowerFast Residential1_Load { get; init; }
 
-    //public Power Residential1_Freezer { get; init; }
+    public PowerFast Residential1_Generation { get; init; }
 
-    //public Power Residential1_HeatPump { get; init; }
+    public PowerFast Residential2_Load { get; init; }
 
-    //public Power Residential1_WashingMachine { get; init; }
+    public PowerFast Residential4_Load { get; init; }
 
-    //public Power Residential1_PV { get; init; }
+    public PowerFast Residential4_ControllableLoad { get; init; }
 
-    //public Power Residential2_CirculationPump { get; init; }
-
-    //public Power Residential2_Freezer { get; init; }
-
-    //public Power Residential2_Dishwasher { get; init; }
-
-    //public Power Residential2_WashingMachine { get; init; }
-
-    public Power Residential1_Load { get; init; }
-
-    public Power Residential1_Generation { get; init; }
-
-    public Power Residential2_Load { get; init; }
-
-    public Power Residential4_Load { get; init; }
-
-    public Power Residential4_ControllableLoad { get; init; }
-
-    public Power Residential4_Generation { get; init; }
+    public PowerFast Residential4_Generation { get; init; }
 
     public override string ToString()
     {
@@ -43,33 +29,36 @@ public class EnhancedEnergyDataSet
     }
 }
 
+[DebuggerDisplay("{" + nameof(Timestamp) + "}")]
 public class EnhancedPowerDataSet
 {
     public DateTimeOffset Timestamp { get; init; }
 
-    public Power Residential1_Load { get; init; }
+    public PowerFast Residential1_Load { get; init; }
 
-    public Power Residential1_Generation { get; init; }
+    public PowerFast Residential1_Generation { get; init; }
 
-    public Power Residential2_Load { get; init; }
+    public PowerFast Residential2_Load { get; init; }
 
-    public Power Residential3_Load { get; init; }
+    public PowerFast Residential3_Load { get; init; }
 
-    public Power Residential3_Generation { get; init; }
+    public PowerFast Residential3_Generation { get; init; }
 
-    public Power Residential4_Load { get; init; }
+    public PowerFast Residential4_Load { get; init; }
 
-    public Power Residential4_ControllableLoad { get; init; }
+    public PowerFast Residential4_Generation { get; init; }
 
-    public Power Residential4_Generation { get; init; }
+    public PowerFast Residential4_Import { get; init; }
 
-    public Power Residential5_Load { get; init; }
+    public PowerFast Residential4_Export { get; init; }
 
-    public Power Industrial3_Load { get; init; }
+    public PowerFast Residential5_Load { get; init; }
 
-    public Power Industrial3_ControllableLoad { get; init; }
+    public PowerFast Industrial3_Load { get; init; }
 
-    public Power Industrial3_Generation { get; init; }
+    public PowerFast Industrial3_ControllableLoad { get; init; }
+
+    public PowerFast Industrial3_Generation { get; init; }
 
     public EnhancedPowerDataSet? FineResDataSet { get; init; }
 }

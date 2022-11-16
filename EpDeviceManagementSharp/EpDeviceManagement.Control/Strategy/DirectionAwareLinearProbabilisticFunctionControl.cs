@@ -2,6 +2,7 @@
 using System.Security.Cryptography;
 using EpDeviceManagement.Contracts;
 using EpDeviceManagement.Control.Extensions;
+using EpDeviceManagement.UnitsExtensions;
 using UnitsNet;
 
 namespace EpDeviceManagement.Control.Strategy;
@@ -9,47 +10,55 @@ namespace EpDeviceManagement.Control.Strategy;
 public class DirectionAwareLinearProbabilisticFunctionControl : LinearProbabilisticFunctionControl
 {
     private readonly bool withEstimation;
-    private readonly decimal loadLimitPortionOfPacketSize;
+    private readonly bool noOutgoing;
+    private readonly double loadLimitPortionOfPacketSize;
 
     public DirectionAwareLinearProbabilisticFunctionControl(
         IStorage battery,
-        Energy packetSize,
+        EnergyFast packetSize,
         Ratio lowerLevel,
         Ratio upperLevel,
         Ratio loadLimitPortionOfPacketSize,
         bool withEstimation,
         RandomNumberGenerator random,
         bool withGeneration,
-        bool withOscillationGuard)
-        : base(battery, packetSize, lowerLevel, upperLevel, random, withGeneration, withOscillationGuard)
+        bool noOutgoing)
+        : base(
+            battery,
+            packetSize,
+            lowerLevel,
+            upperLevel,
+            random,
+            withGeneration && !noOutgoing)
     {
         this.withEstimation = withEstimation;
-        this.loadLimitPortionOfPacketSize = (decimal) loadLimitPortionOfPacketSize.DecimalFractions;
+        this.noOutgoing = noOutgoing;
+        this.loadLimitPortionOfPacketSize = loadLimitPortionOfPacketSize.DecimalFractions;
     }
 
-    public override string Name => base.Name + " + Direction" + (this.withEstimation ? " + Estimation" : "");
+    public override string Name => base.Name + " + Direction" + (this.withEstimation ? " + Estimation" : "") + (this.noOutgoing ? " + NoOutgoing" : "");
 
     public override string Configuration => string.Create(CultureInfo.InvariantCulture,
         $"{base.Configuration} ({this.loadLimitPortionOfPacketSize:F2})");
 
     public override string PrettyConfiguration => $"{base.PrettyConfiguration} ({this.loadLimitPortionOfPacketSize * 100:F0}%)";
 
-    private Energy assumedCurrentBatterySoC;
+    private EnergyFast assumedCurrentBatterySoC;
 
-    protected override Energy AssumedCurrentBatterySoC => this.assumedCurrentBatterySoC;
+    protected override EnergyFast AssumedCurrentBatterySoC => this.assumedCurrentBatterySoC;
 
-    protected override ControlDecision DoUnguardedControl(
+    public override ControlDecision DoControl(
         int dataPoint,
         TimeSpan timeStep,
-        ILoad[] loads,
-        IGenerator[] generators,
+        ILoad load,
+        IGenerator generator,
         TransferResult lastTransferResult)
     {
         if (withEstimation)
         {
             this.assumedCurrentBatterySoC =
-                LinearProbabilisticEstimationFunctionControl.CalculateAssumedCurrentBatterySoC(timeStep, loads,
-                    generators, this.Battery.CurrentStateOfCharge);
+                LinearProbabilisticEstimationFunctionControl.CalculateAssumedCurrentBatterySoC(timeStep, load,
+                    generator, this.Battery.CurrentStateOfCharge);
         }
         else
         {
@@ -58,8 +67,8 @@ public class DirectionAwareLinearProbabilisticFunctionControl : LinearProbabilis
         if (this.AssumedCurrentBatterySoC > this.LowerLimit
             && this.AssumedCurrentBatterySoC < this.UpperLimit)
         {
-            var totalLoad = loads.Sum() -
-                            generators.Sum();
+            var totalLoad = load.MomentaryDemand -
+                            generator.MomentaryGeneration;
             var packetPower = this.PacketSize / timeStep;
             var loadLimit = packetPower * loadLimitPortionOfPacketSize;
             if (this.AssumedCurrentBatterySoC < this.MiddleLimit)
@@ -83,6 +92,6 @@ public class DirectionAwareLinearProbabilisticFunctionControl : LinearProbabilis
             }
         }
 
-        return base.DoUnguardedControl(dataPoint, timeStep, loads, generators, lastTransferResult);
+        return base.DoControl(dataPoint, timeStep, load, generator, lastTransferResult);
     }
 }

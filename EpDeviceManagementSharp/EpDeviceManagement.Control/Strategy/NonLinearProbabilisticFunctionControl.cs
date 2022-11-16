@@ -1,5 +1,6 @@
 ﻿using System.Security.Cryptography;
 using EpDeviceManagement.Contracts;
+using EpDeviceManagement.UnitsExtensions;
 using UnitsNet;
 
 namespace EpDeviceManagement.Control.Strategy;
@@ -9,14 +10,19 @@ public class NonLinearProbabilisticFunctionControl : SingleStateProbabilisticFun
     private readonly TimeSpan mttr;
     public NonLinearProbabilisticFunctionControl(
         IStorage battery,
-        Energy packetSize,
+        EnergyFast packetSize,
         Ratio lowerLevel,
         Ratio upperLevel,
         RandomNumberGenerator random,
         TimeSpan meanTimeToResponse,
-        bool withGeneration,
-        bool withOscillationGuard)
-        : base(battery, packetSize, lowerLevel, upperLevel, random, withGeneration, withOscillationGuard)
+        bool withGeneration)
+        : base(
+            battery,
+            packetSize,
+            lowerLevel,
+            upperLevel,
+            random,
+            withGeneration)
     {
         this.mttr = meanTimeToResponse;
     }
@@ -33,7 +39,7 @@ public class NonLinearProbabilisticFunctionControl : SingleStateProbabilisticFun
         return this.GetProbability(timeStep, this.UpperLimit, this.MiddleLimit);
     }
 
-    private double GetProbability(TimeSpan timeStep, Energy upperLimit, Energy lowerLimit)
+    private double GetProbability(TimeSpan timeStep, EnergyFast upperLimit, EnergyFast lowerLimit)
     {
         var mu = (upperLimit - this.Battery.CurrentStateOfCharge)
                  / (this.Battery.CurrentStateOfCharge - lowerLimit);

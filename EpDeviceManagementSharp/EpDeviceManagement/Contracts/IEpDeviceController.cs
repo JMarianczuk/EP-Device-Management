@@ -11,6 +11,8 @@ public interface IEpDeviceController
 
     string PrettyConfiguration { get; }
 
+    bool RequestsOutgoingPackets { get; }
+
     /*
      * Either needs to be a list of decisions,
      * or the controller makes the decisions itself
@@ -18,7 +20,7 @@ public interface IEpDeviceController
     ControlDecision DoControl(
         int dataPoint,
         TimeSpan timeStep,
-        ILoad[] loads,
-        IGenerator[] generators,
+        ILoad load,
+        IGenerator generator,
         TransferResult lastTransferResult);
 }

@@ -28,6 +28,12 @@
       <Generator>TextTemplatingFileGenerator</Generator>
       <LastGenOutput>EnergyDataSetGenerator.generated.cs</LastGenOutput>
     </None>
+    <None Update="household_data_1440min_power.csv">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="household_data_1440min_singleindex.csv">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Update="household_data_15min_power.csv">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
@@ -38,6 +44,18 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Update="household_data_1min_singleindex.csv">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="household_data_240min_power.csv">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="household_data_240min_singleindex.csv">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="household_data_360min_power.csv">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="household_data_360min_singleindex.csv">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Update="household_data_5min_power.csv">
@@ -64,6 +82,10 @@
       <AutoGen>True</AutoGen>
       <DependentUpon>EnergyDataSetGenerator.tt</DependentUpon>
     </Compile>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Extensions\" />
   </ItemGroup>
 
 </Project>

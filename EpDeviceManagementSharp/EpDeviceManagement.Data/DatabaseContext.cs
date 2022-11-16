@@ -3,6 +3,7 @@ using System.Globalization;
 using CsvHelper;
 using CsvHelper.Configuration;
 using CsvHelper.TypeConversion;
+using EpDeviceManagement.Data.Extensions;
 using EpDeviceManagement.Data.Generation;
 using EpDeviceManagement.Data.Generation.Abstractions;
 
@@ -36,7 +37,7 @@ public class ReadDataFromCsv
         var csvReader = new CsvReader(reader, new CsvConfiguration(CultureInfo.InvariantCulture));
 
         var records = csvReader.GetRecordsAsync<PowerDataSet>();
-        return (records, new DisposableCollection(new IDisposable[] { reader, csvReader }));
+        return (records, new DisposableCollection(new IDisposable[] { csvReader, reader }));
     }
 
     private class DisposableCollection : IDisposable

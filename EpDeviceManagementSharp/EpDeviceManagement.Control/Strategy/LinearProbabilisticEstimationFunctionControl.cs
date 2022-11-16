@@ -10,49 +10,47 @@ public class LinearProbabilisticEstimationFunctionControl : LinearProbabilisticF
 {
     public LinearProbabilisticEstimationFunctionControl(
         IStorage battery,
-        Energy packetSize,
+        EnergyFast packetSize,
         Ratio lowerLevel,
         Ratio upperLevel,
         RandomNumberGenerator random,
-        bool withGeneration,
-        bool withOscillationGuard)
+        bool withGeneration)
         : base(
             battery,
             packetSize,
             lowerLevel,
             upperLevel,
             random,
-            withGeneration,
-            withOscillationGuard)
+            withGeneration)
     {
         this.assumedCurrentBatterySoC = battery.CurrentStateOfCharge;
     }
 
-    private Energy assumedCurrentBatterySoC;
+    private EnergyFast assumedCurrentBatterySoC;
 
     public override string Name => base.Name + " + Estimation";
 
-    protected override Energy AssumedCurrentBatterySoC => this.assumedCurrentBatterySoC;
+    protected override EnergyFast AssumedCurrentBatterySoC => this.assumedCurrentBatterySoC;
 
-    protected override ControlDecision DoUnguardedControl(
+    public override ControlDecision DoControl(
         int dataPoint,
         TimeSpan timeStep,
-        ILoad[] loads,
-        IGenerator[] generators,
+        ILoad load,
+        IGenerator generator,
         TransferResult lastTransferResult)
     {
-        this.assumedCurrentBatterySoC = CalculateAssumedCurrentBatterySoC(timeStep, loads, generators, this.Battery.CurrentStateOfCharge);
-        return base.DoUnguardedControl(dataPoint, timeStep, loads, generators, lastTransferResult);
+        this.assumedCurrentBatterySoC = CalculateAssumedCurrentBatterySoC(timeStep, load, generator, this.Battery.CurrentStateOfCharge);
+        return base.DoControl(dataPoint, timeStep, load, generator, lastTransferResult);
     }
 
-    public static Energy CalculateAssumedCurrentBatterySoC(
+    public static EnergyFast CalculateAssumedCurrentBatterySoC(
         TimeSpan timeStep,
-        ILoad[] loads,
-        IGenerator[] generators,
-        Energy actualCurrentStateOfCharge)
+        ILoad load,
+        IGenerator generator,
+        EnergyFast actualCurrentStateOfCharge)
     {
-        var l = loads.Sum();
-        var g = generators.Sum();
+        var l = load.MomentaryDemand;
+        var g = generator.MomentaryGeneration;
         var net = l - g;
         var batteryCurrentStateOfCharge = actualCurrentStateOfCharge - (net * timeStep);
         return batteryCurrentStateOfCharge;

@@ -1,14 +1,15 @@
 ﻿using EpDeviceManagement.Contracts;
+using EpDeviceManagement.UnitsExtensions;
 using UnitsNet;
 
 namespace EpDeviceManagement.Simulation.Loads;
 
 public class UncontrollableGeneration : IGenerator
 {
-    public Power MomentaneousGeneration { get; set; }
+    public PowerFast MomentaryGeneration { get; set; }
 
     public override string ToString()
     {
-        return $"Gen: {this.MomentaneousGeneration}";
+        return $"Gen: {this.MomentaryGeneration}";
     }
 }

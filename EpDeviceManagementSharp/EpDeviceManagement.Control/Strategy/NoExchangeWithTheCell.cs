@@ -6,9 +6,9 @@ public class NoExchangeWithTheCell : IEpDeviceController
 {
     public ControlDecision DoControl(
         int dataPoint,
-        TimeSpan timeStep, 
-        ILoad[] loads,
-        IGenerator[] generators,
+        TimeSpan timeStep,
+        ILoad load,
+        IGenerator generator,
         TransferResult lastTransferResult)
     {
         return ControlDecision.NoAction.Instance;
@@ -19,4 +19,6 @@ public class NoExchangeWithTheCell : IEpDeviceController
     public string Configuration => string.Empty;
 
     public string PrettyConfiguration => string.Empty;
+
+    public bool RequestsOutgoingPackets => false;
 }

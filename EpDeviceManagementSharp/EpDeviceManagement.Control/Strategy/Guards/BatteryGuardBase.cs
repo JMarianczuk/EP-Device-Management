@@ -1,5 +1,6 @@
 ﻿using EpDeviceManagement.Contracts;
 using EpDeviceManagement.Control.Extensions;
+using EpDeviceManagement.UnitsExtensions;
 using UnitsNet;
 
 namespace EpDeviceManagement.Control.Strategy.Guards;
@@ -8,7 +9,7 @@ public abstract class BatteryGuardBase
 {
     protected BatteryGuardBase(
         IStorage battery,
-        Energy packetSize)
+        EnergyFast packetSize)
     {
         Battery = battery;
         PacketSize = packetSize;
@@ -16,18 +17,5 @@ public abstract class BatteryGuardBase
 
     protected IStorage Battery { get; }
 
-    protected Energy PacketSize { get; }
-
-    protected static Energy GetLoadsEnergy(TimeSpan timeStep, ILoad[] loads)
-    {
-        var loadsEnergy = loads.Sum() * timeStep;
-        return loadsEnergy;
-    }
-
-    protected static Energy GetGeneratorsEnergy(TimeSpan timeStep, IGenerator[] generators)
-    {
-        var generatorsSum = generators.Sum();
-        var generatorsEnergy = generatorsSum * timeStep;
-        return generatorsEnergy;
-    }
+    protected EnergyFast PacketSize { get; }
 }

@@ -9,24 +9,19 @@ using UnitsNet;
 
 namespace EpDeviceManagement.Control.Strategy;
 
-public class SimplePredictiveControl : GuardedStrategy, IEpDeviceController
+public class SimplePredictiveControl : IEpDeviceController
 {
     private readonly TimeSpan predictionHorizon;
-    private readonly IValuePredictor<Power> loadsPredictor;
-    private readonly IValuePredictor<Power> generationPredictor;
+    private readonly IValuePredictor<PowerFast> loadsPredictor;
+    private readonly IValuePredictor<PowerFast> generationPredictor;
 
     public SimplePredictiveControl(
         IStorage battery,
         Energy packetSize,
         TimeSpan predictionHorizon,
-        IValuePredictor<Power> loadsPredictor,
-        IValuePredictor<Power> generationPredictor,
-        string predictorConfiguration,
-        bool withOscillationGuard)
-        : base(
-            new BatteryCapacityGuard(battery, packetSize),
-            new BatteryPowerGuard(battery, packetSize),
-            withOscillationGuard ? new OscillationGuard() : DummyGuard.Instance)
+        IValuePredictor<PowerFast> loadsPredictor,
+        IValuePredictor<PowerFast> generationPredictor,
+        string predictorConfiguration)
     {
         this.predictionHorizon = predictionHorizon;
         this.loadsPredictor = loadsPredictor;
@@ -39,26 +34,26 @@ public class SimplePredictiveControl : GuardedStrategy, IEpDeviceController
         this.PrettyConfiguration = $"{predictionHorizon:hh\\:mm} {predictorConfiguration}";
     }
 
-    protected override ControlDecision DoUnguardedControl(
+    public ControlDecision DoControl(
         int dataPoint,
         TimeSpan timeStep,
-        ILoad[] loads,
-        IGenerator[] generators,
+        ILoad load,
+        IGenerator generator,
         TransferResult lastTransferResult)
     {
         var predictedSteps = (int)(this.predictionHorizon / timeStep);
         var loadPredictions = this.loadsPredictor
             .Predict(predictedSteps, dataPoint)
-            .Prepend(loads.Sum());
+            .Prepend(load.MomentaryDemand);
         var generationPredictions = this.generationPredictor
             .Predict(predictedSteps, dataPoint)
-            .Prepend(generators.Sum());
+            .Prepend(generator.MomentaryGeneration);
         var currentBattery = this.Battery.CurrentStateOfCharge;
         var minSoC = this.Battery.TotalCapacity * 0.1;
         var maxSoC = this.Battery.TotalCapacity * 0.9;
-        foreach (var (load, gen) in loadPredictions.Zip(generationPredictions))
+        foreach (var (l, gen) in loadPredictions.Zip(generationPredictions))
         {
-            var effectiveLoad = load - gen;
+            var effectiveLoad = l - gen;
             currentBattery -= effectiveLoad * timeStep;
             if (currentBattery <= minSoC)
             {
@@ -80,9 +75,11 @@ public class SimplePredictiveControl : GuardedStrategy, IEpDeviceController
 
     private Energy PacketSize { get; }
 
-    public override string Name => "Simple Predictive Control";
+    public string Name => "Simple Predictive Control";
 
-    public override string Configuration { get; }
+    public string Configuration { get; }
 
-    public override string PrettyConfiguration { get; }
+    public string PrettyConfiguration { get; }
+
+    public bool RequestsOutgoingPackets => true;
 }

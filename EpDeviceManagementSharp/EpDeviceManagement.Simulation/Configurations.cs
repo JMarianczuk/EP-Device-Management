@@ -2,6 +2,7 @@
 using EpDeviceManagement.Contracts;
 using EpDeviceManagement.Control.Contracts;
 using EpDeviceManagement.Simulation.Storage;
+using EpDeviceManagement.UnitsExtensions;
 using UnitsNet;
 
 namespace EpDeviceManagement.Simulation;
@@ -10,7 +11,7 @@ public class Configuration
 {
     public IStorage Battery { get; init; }
 
-    public Energy PacketSize { get; init; }
+    public EnergyFast PacketSize { get; init; }
 
     public DataSet DataSet { get; init; }
 
@@ -19,55 +20,16 @@ public class Configuration
 
 public class DataSet
 {
-    private static Func<EnhancedPowerDataSet, Power> ZeroPower = _ => Power.Zero;
-    private readonly Func<EnhancedPowerDataSet, Power> getLoadsTotalPower = ZeroPower;
-    private readonly Func<EnhancedPowerDataSet, Power> getGeneratorsTotalPower = ZeroPower;
-
-    public IReadOnlyCollection<EnhancedPowerDataSet> Data { get; init; } = Array.Empty<EnhancedPowerDataSet>();
+    public IReadOnlyList<List<EnhancedPowerDataSet>> Data { get; init; } =
+        Array.Empty<List<EnhancedPowerDataSet>>();
 
     public string Configuration { get; init; } = string.Empty;
 
     public bool HasGeneration { get; init; } = false;
 
-    public Func<EnhancedPowerDataSet, Power> GetLoadsTotalPower
-    {
-        get => this.getLoadsTotalPower;
-        init
-        {
-            this.getLoadsTotalPower = value;
-            this.GetMomentaneousLoadsPower = GetMomentaneousPowerFromFineRes(value);
-        }
-    }
+    public Func<EnhancedPowerDataSet, PowerFast> GetLoad { get; init; }
 
-    public Func<EnhancedPowerDataSet, Power> GetMomentaneousLoadsPower { get; init; } = ZeroPower;
-
-    public Func<EnhancedPowerDataSet, Power> GetGeneratorsTotalPower
-    {
-        get => this.getGeneratorsTotalPower;
-        init
-        {
-            this.getGeneratorsTotalPower = value;
-            this.GetMomentaneousGeneratorsPower = GetMomentaneousPowerFromFineRes(value);
-        }
-    }
-
-    public Func<EnhancedPowerDataSet, Power> GetMomentaneousGeneratorsPower { get; init; } = ZeroPower;
-
-    public static Func<EnhancedPowerDataSet, Power> GetMomentaneousPowerFromFineRes(
-        Func<EnhancedPowerDataSet, Power> getPowerFunc)
-    {
-        return d =>
-        {
-            if (d.FineResDataSet != null)
-            {
-                return getPowerFunc(d.FineResDataSet);
-            }
-            else
-            {
-                return getPowerFunc(d);
-            }
-        };
-    }
+    public Func<EnhancedPowerDataSet, PowerFast> GetGeneration { get; init; }
 }
 
 public readonly struct BatteryConfiguration
@@ -79,41 +41,43 @@ public readonly struct BatteryConfiguration
 
 public class SimulationResult
 {
-    public string BatteryConfiguration { get; set; } = string.Empty;
+    public string BatteryConfiguration { get; init; } = string.Empty;
 
     public int StepsSimulated { get; set; }
 
-    public Energy PacketSize { get; set; }
+    public EnergyFast PacketSize { get; init; }
 
-    public Ratio PacketProbability { get; set; }
+    public Ratio PacketProbability { get; init; }
 
-    public TimeSpan TimeStep { get; set; }
+    public TimeSpan TimeStep { get; init; }
 
     public bool Success { get; set; }
 
     public BatteryFailReason FailReason { get; set; }
 
-    public string StrategyName { get; set; } = string.Empty;
+    public string StrategyName { get; init; } = string.Empty;
 
-    public string StrategyConfiguration { get; set; } = string.Empty;
+    public string StrategyConfiguration { get; init; } = string.Empty;
 
-    public string StrategyPrettyConfiguration { get; set; } = string.Empty;
+    public string StrategyPrettyConfiguration { get; init; } = string.Empty;
 
-    public string DataConfiguration { get; set; } = string.Empty;
+    public string DataConfiguration { get; init; } = string.Empty;
 
-    public int Seed { get; set; }
+    public string GuardConfiguration { get; init; } = string.Empty;
 
-    public Energy BatteryMinSoC { get; set; }
+    public int Seed { get; init; }
 
-    public Energy BatteryMaxSoC { get; set; }
+    public EnergyFast BatteryMinSoC { get; set; }
 
-    public Energy BatteryAvgSoC { get; set; }
+    public EnergyFast BatteryMaxSoC { get; set; }
+
+    public EnergyFast BatteryAvgSoC { get; set; }
 
     public double TotalKilowattHoursIncoming { get; set; }
 
     public double TotalKilowattHoursOutgoing { get; set; }
 
-    public double TotalKilowattHoursGenerationMissed { get; set; }
+    public double TotalKilowattHoursForfeited { get; set; }
 
     public IGuardSummary GuardSummary { get; set; }
 }

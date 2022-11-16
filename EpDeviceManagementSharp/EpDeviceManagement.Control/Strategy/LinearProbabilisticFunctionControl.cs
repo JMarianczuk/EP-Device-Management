@@ -1,5 +1,6 @@
 ﻿using System.Security.Cryptography;
 using EpDeviceManagement.Contracts;
+using EpDeviceManagement.UnitsExtensions;
 using UnitsNet;
 
 namespace EpDeviceManagement.Control.Strategy;
@@ -8,20 +9,18 @@ public class LinearProbabilisticFunctionControl : SingleStateProbabilisticFuncti
 {
     public LinearProbabilisticFunctionControl(
         IStorage battery,
-        Energy packetSize,
+        EnergyFast packetSize,
         Ratio lowerLevel,
         Ratio upperLevel,
         RandomNumberGenerator random,
-        bool withGeneration,
-        bool withOscillationGuard)
+        bool withGeneration)
         : base(
             battery,
             packetSize,
             lowerLevel,
             upperLevel,
             random,
-            withGeneration,
-            withOscillationGuard)
+            withGeneration)
     {
     }
 
@@ -41,7 +40,7 @@ public class LinearProbabilisticFunctionControl : SingleStateProbabilisticFuncti
         return probability;
     }
 
-    private double GetRelativePositionInInterval(Energy upperLimit, Energy lowerLimit)
+    private double GetRelativePositionInInterval(EnergyFast upperLimit, EnergyFast lowerLimit)
     {
         var range = upperLimit - lowerLimit;
         var positionInRange = this.AssumedCurrentBatterySoC - lowerLimit;

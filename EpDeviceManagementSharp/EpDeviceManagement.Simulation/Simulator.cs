@@ -12,8 +12,9 @@ using EpDeviceManagement.Simulation.Storage;
 using EpDeviceManagement.UnitsExtensions;
 using UnitsNet;
 using Humanizer;
-
+using JetBrains.Profiler.Api;
 using static MoreLinq.Extensions.CartesianExtension;
+using static EpDeviceManagement.Simulation.Extensions.DataSetExtensions;
 
 namespace EpDeviceManagement.Simulation
 {
@@ -27,6 +28,7 @@ namespace EpDeviceManagement.Simulation
             var strategies = TestData.GetStrategies();
             var packetSizes = TestData.GetPacketSizes();
             var packetProbabilities = TestData.GetPacketProbabilities();
+            var seeds = TestData.GetSeeds();
 
             var timeSteps = new[]
             {
@@ -35,22 +37,38 @@ namespace EpDeviceManagement.Simulation
             };
 
             var shortTimestep = timeSteps.Skip(1).Take(1)
-                .Cartesian(packetSizes.Where(ps => ps <= Energy.FromKilowattHours(0.8)), ValueTuple.Create);
+                .Cartesian(packetSizes.Where(ps => ps <= EnergyFast.FromKilowattHours(0.8)), ValueTuple.Create);
             var longTimestep = timeSteps.Take(1)
                 .Cartesian(packetSizes, ValueTuple.Create);
             //var timestepCombinations = shortTimestep.Concat(longTimestep).ToList();
             var timestepCombinations = longTimestep.ToList();
 
-            var seeds = new[]
-            {
-                //13254,
-                148354,
-            };
 
             IList<DataSet> dataSets;
             using (var progress = new ConsoleProgressBar())
             {
                 dataSets = await TestData.GetDataSetsAsync(timeStep, progress);
+            }
+            
+            var precomputedLength = dataSets.Max(d => d.Data.Count) * 2;
+            List<(int s, int strategySeed, Func<CachedDoublesRandomNumberGenerator>)> precomputedRandomValues;
+            using (var progress = new ConsoleProgressBar())
+            {
+                progress.Setup(precomputedLength * seeds.Count, "precalculating random values");
+                precomputedRandomValues = seeds.Select<int, (int, int, Func<CachedDoublesRandomNumberGenerator>)>(s =>
+                    {
+                        var precomputed_buffer = new double[precomputedLength];
+                        var rng = new SeededRandomNumberGenerator(s);
+                        var strategySeed = rng.Next(0, int.MaxValue);
+                        for (int i = 0; i < precomputed_buffer.Length; i += 1)
+                        {
+                            precomputed_buffer[i] = rng.NextDouble();
+                            progress.FinishOne();
+                        }
+
+                        return (s, strategySeed, () => new CachedDoublesRandomNumberGenerator(precomputed_buffer));
+                    })
+                    .ToList();
             }
 
             var allCombinations =
@@ -59,13 +77,13 @@ namespace EpDeviceManagement.Simulation
                         batteries,
                         strategies,
                         packetProbabilities,
-                        seeds,
+                        precomputedRandomValues,
                         ValueTuple.Create)
                     .Cartesian(
                         timestepCombinations,
                         ValueTupleExtensions.Combine);
             var numberOfCombinations = GetNumberOfCombinations(
-                dataSets, batteries, strategies, packetProbabilities, seeds, timestepCombinations);
+                dataSets, batteries, strategies, packetProbabilities, precomputedRandomValues, timestepCombinations);
             IProducerConsumerCollection<SimulationResult> results = new ConcurrentQueue<SimulationResult>();
             using var cts = new CancellationTokenSource();
             var token = cts.Token;
@@ -77,10 +95,14 @@ namespace EpDeviceManagement.Simulation
                     $"configuration={simulationResult.StrategyConfiguration}",
                     $"prettyConfiguration={simulationResult.StrategyPrettyConfiguration}",
                     $"data={simulationResult.DataConfiguration}",
+                    $"guardConfiguration={simulationResult.GuardConfiguration}",
                     $"battery={simulationResult.BatteryConfiguration}",
-                    $"batteryMin={simulationResult.BatteryMinSoC}",
-                    $"batteryMax={simulationResult.BatteryMaxSoC}",
-                    $"batteryAvg={simulationResult.BatteryAvgSoC}",
+                    string.Create(CultureInfo.InvariantCulture,
+                        $"batteryMin_kwh={simulationResult.BatteryMinSoC.KilowattHours:0.00#}"),
+                    string.Create(CultureInfo.InvariantCulture,
+                        $"batteryMax_kwh={simulationResult.BatteryMaxSoC.KilowattHours:0.00#}"),
+                    string.Create(CultureInfo.InvariantCulture,
+                        $"batteryAvg_kwh={simulationResult.BatteryAvgSoC.KilowattHours:0.00#}"),
                     string.Create(CultureInfo.InvariantCulture,
                         $"packetSize={simulationResult.PacketSize.KilowattHours:0.00#}"),
                     string.Create(CultureInfo.InvariantCulture,
@@ -99,7 +121,7 @@ namespace EpDeviceManagement.Simulation
                     string.Create(CultureInfo.InvariantCulture,
                         $"energy_kwh_out={simulationResult.TotalKilowattHoursOutgoing}"),
                     string.Create(CultureInfo.InvariantCulture,
-                        $"generationMissed_kwh={simulationResult.TotalKilowattHoursGenerationMissed}"),
+                        $"generationMissed_kwh={simulationResult.TotalKilowattHoursForfeited}"),
                     $"seed={simulationResult.Seed}"));
             }
 
@@ -116,7 +138,9 @@ namespace EpDeviceManagement.Simulation
                     var previousTimes = new (int numberOfCombinations, TimeSpan time)[]
                     {
                         //( 7_577_010, TimeSpan.FromHours(3) + TimeSpan.FromMinutes(39) ),
-                        ( 4_767_840, TimeSpan.FromHours(5) + TimeSpan.FromMinutes(16) ),
+                        //( 4_767_840, TimeSpan.FromHours(5) + TimeSpan.FromMinutes(16) ),
+                        //( 3_350_160, TimeSpan.FromHours(5) + TimeSpan.FromMinutes(3) ), //small battery only
+                        ( 2_138_400, TimeSpan.FromMinutes(51) + TimeSpan.FromSeconds(22) )
                     };
                     var prevTime = previousTimes[0];
                     var factor = (double) numberOfCombinations / prevTime.numberOfCombinations;
@@ -132,14 +156,10 @@ namespace EpDeviceManagement.Simulation
                         }
                         while (results.TryTake(out var entry))
                         {
-#if DEBUG
                             if (!string.IsNullOrEmpty(entry.StrategyName))
                             {
                                 await WriteEntry(writer, entry);
                             }
-#else
-                            await WriteEntry(writer, entry);
-#endif
                             progress.FinishOne();
                         }
 
@@ -161,6 +181,7 @@ namespace EpDeviceManagement.Simulation
 
             var beforeSimulation = DateTime.Now;
 
+            MeasureProfiler.StartCollectingData();
 #if DEBUG
             Sequential.ForEach(
 #else
@@ -169,7 +190,7 @@ namespace EpDeviceManagement.Simulation
                 allCombinations,
                 new ParallelOptions()
                 {
-                    MaxDegreeOfParallelism = 16,
+                    MaxDegreeOfParallelism = 12,
                 },
                 combination =>
                 {
@@ -178,7 +199,7 @@ namespace EpDeviceManagement.Simulation
                         battery,
                         strategy,
                         packetProbability,
-                        seed,
+                        random,
                         simulationStep,
                         packetSize
                         ) = combination;
@@ -188,26 +209,28 @@ namespace EpDeviceManagement.Simulation
                         packetSize,
                         dataSet,
                         packetProbability, 
-                        seed,
+                        random,
                         battery);
                     results.TryAdd(res);
                 });
 
             cts.Cancel();
+            MeasureProfiler.StopCollectingData();
+            MeasureProfiler.SaveData();
             await writeTask;
 
             var elapsed = DateTime.Now - beforeSimulation;
             Console.WriteLine($"simulating took {elapsed.Humanize(precision: 2)} ({elapsed}) and finished at {DateTime.Now:HH:mm:ss}");
         }
 
-        public delegate IEpDeviceController CreateStrategy(
+        public delegate IEpDeviceController? CreateStrategy(
             Configuration configuration,
             bool withOscillationGuard = true);
 
-        private static Power GetReducedPower(
-            Power initialReducedPower,
-            Power chargePower,
-            Power generatorPower)
+        private static PowerFast GetNewChargePower(
+            PowerFast initialReducedPower,
+            PowerFast chargePower,
+            PowerFast generatorPower)
         {
             if (initialReducedPower > generatorPower)
             {
@@ -216,7 +239,7 @@ namespace EpDeviceManagement.Simulation
                     // reduced power was larger than the current generation due to the full battery buffer
                     // but there is some load, match that load with the generation exactly
                     // and since generator.CurrentGeneration >= chargePower by reducing by chargePower we are still within the rules
-                    return Power.Zero;
+                    return PowerFast.Zero;
                 }
                 else
                 {
@@ -228,13 +251,13 @@ namespace EpDeviceManagement.Simulation
             else if (initialReducedPower > chargePower)
             {
                 // no need to discharge the battery, match the load with the generation exactly
-                return Power.Zero;
+                return PowerFast.Zero;
             }
             else
             {
-                // reduced power may be slightly too little due to number inaccuracy.
-                // Increase it slightly in favor of not being able to track at the absolute maximum of the battery anyways
-                const decimal fullBatteryBuffer = 0.999m;
+                // the new charge power may be slightly too large due to number inaccuracy.
+                // Decrease it slightly in favor of not being able to track at the absolute maximum of the battery anyways
+                const double fullBatteryBuffer = 0.999;
 
                 // reduce the power slightly more than necessary, but stay in business
                 return (chargePower - initialReducedPower) * fullBatteryBuffer;
@@ -243,81 +266,82 @@ namespace EpDeviceManagement.Simulation
 
         private static void DoBatteryChargingWithPvMppTracking(
             BatteryElectricStorage2 battery,
-            ControllableGeneration generator,
+            PowerFast generation,
             TimeSpan timeStep,
-            Power chargePower,
-            ref double generatedKwhMissed)
+            PowerFast chargePower,
+            ref EnergyFast forfeited)
         {
             // consider that PV generation has to be lowered to not exceed the battery limits
-            var newSoC = battery.TrySimulate(timeStep, chargePower, Power.Zero);
+            var newSoC = battery.TrySimulate(timeStep, chargePower, PowerFast.Zero);
             if (newSoC >= battery.TotalCapacity)
             {
                 var difference = newSoC - battery.TotalCapacity;
                 var reducedPower = (difference / timeStep) / (battery.ChargingEfficiency);
-                var newChargePower = GetReducedPower(reducedPower, chargePower, generator.CurrentGeneration);
-                generatedKwhMissed += ((chargePower - newChargePower) * timeStep).KilowattHours;
-                battery.Simulate(timeStep, newChargePower, Power.Zero);
+                var newChargePower = GetNewChargePower(reducedPower, chargePower, generation);
+                forfeited += (chargePower - newChargePower) * timeStep;
+                battery.Simulate(timeStep, newChargePower, PowerFast.Zero);
             }
             else
             {
-                battery.Simulate(timeStep, chargePower, Power.Zero);
+                battery.TrySetNewSoc(newSoC);
             }
         }
 
         private SimulationResult SimulateSingle(
             TimeSpan timeStep,
             CreateStrategy createStrategy,
-            Energy packetSize,
+            EnergyFast packetSize,
             DataSet dataSet,
             Ratio packetProbability,
-            int seed,
+            (int originalSeed, int strategySeed, Func<CachedDoublesRandomNumberGenerator> random) rng,
             BatteryConfiguration batteryConfig)
         {
-            var random = new SeededRandomNumberGenerator(seed);
+            var dataTimeStep = TimeSpan.FromMinutes(1);
+            var random = rng.random();
+            // have random transfer accept decisions be independent from what strategies use the random values for.
+            var strategyRandom = new SeededRandomNumberGenerator(rng.strategySeed);
             TransferResult lastDecision = TransferResult.NoTransferRequested.Instance;
             var battery = batteryConfig.CreateBattery();
             var strategyConfig = new Configuration()
             {
                 Battery = battery,
                 PacketSize = packetSize,
-                Random = random,
+                Random = strategyRandom,
                 DataSet = dataSet,
             };
             var strategy = createStrategy(strategyConfig);
-#if DEBUG
-            if (
-                //strategy is DirectionAwareLinearProbabilisticFunctionControl dir
-                //&& dir.Name.Contains("Estimation")
-                //&& dataSet.Configuration == "Res1"
-                strategy is AimForSpecificBatteryRange { Configuration: "[0.70, 1.00]" }
-                && dataSet.Configuration == "Res1"
-                && packetProbability.Equals(Ratio.FromPercent(15), .01, ComparisonType.Relative)
-                && packetSize.Equals(Energy.FromKilowattHours(1), .01, ComparisonType.Relative)
-                )
-            {
-                int p = 5;
-            }
-            else
+            if (strategy == null)
             {
                 return new SimulationResult();
             }
+#if DEBUG
+            //if (
+            //    //strategy is DirectionAwareLinearProbabilisticFunctionControl dir
+            //    //&& dir.Name.Contains("Estimation")
+            //    //&& dataSet.Configuration == "Res1"
+            //    strategy is AimForSpecificBatteryRange { Configuration: "[0.70, 1.00]" }
+            //    && dataSet.Configuration == "Res1"
+            //    && packetProbability.Equals(Ratio.FromPercent(15), .01, ComparisonType.Relative)
+            //    && packetSize.Equals(Energy.FromKilowattHours(1), .01, ComparisonType.Relative)
+            //    )
+            //{
+            //    int p = 5;
+            //}
+            //else
+            //{
+            //    return new SimulationResult();
+            //}
 #endif
             using (strategy as IDisposable)
             {
-                var loads = new[]
+                var load = new UncontrollableLoad()
                 {
-                    new UncontrollableLoad()
-                    {
-                        CurrentDemand = Power.Zero,
-                    }
+                    MomentaryDemand = PowerFast.Zero,
                 };
 
-                var generators = new[]
+                var generator = new ControllableGeneration()
                 {
-                    new ControllableGeneration()
-                    {
-                        CurrentGeneration = Power.Zero,
-                    },
+                    MomentaryGeneration = PowerFast.Zero,
                 };
 
                 int step = 0;
@@ -330,12 +354,13 @@ namespace EpDeviceManagement.Simulation
                     StrategyConfiguration = strategy.Configuration,
                     StrategyPrettyConfiguration = strategy.PrettyConfiguration,
                     DataConfiguration = dataSet.Configuration,
+                    GuardConfiguration = strategy is GuardedStrategyWrapper wrapper ? wrapper.GuardConfiguration : string.Empty,
                     BatteryConfiguration = $"{batteryConfig.Description}",
-                    Seed = seed,
+                    Seed = rng.originalSeed,
                 };
-                double totalKwhIn = 0;
-                double totalKwhOut = 0;
-                double generatedKwhMissed = 0;
+                EnergyFast totalEnergyIn = EnergyFast.Zero;
+                EnergyFast totalEnergyOut = EnergyFast.Zero;
+                EnergyFast totalForfeitedEnergy = EnergyFast.Zero;
                 var batteryMinSoC = battery.CurrentStateOfCharge;
                 var batteryMaxSoC = battery.CurrentStateOfCharge;
                 var batterySoCSum = battery.CurrentStateOfCharge;
@@ -343,9 +368,9 @@ namespace EpDeviceManagement.Simulation
                 void SetResultValues()
                 {
                     result.StepsSimulated = step;
-                    result.TotalKilowattHoursIncoming = totalKwhIn;
-                    result.TotalKilowattHoursOutgoing = totalKwhOut;
-                    result.TotalKilowattHoursGenerationMissed = generatedKwhMissed;
+                    result.TotalKilowattHoursIncoming = totalEnergyIn.KilowattHours;
+                    result.TotalKilowattHoursOutgoing = totalEnergyOut.KilowattHours;
+                    result.TotalKilowattHoursForfeited = totalForfeitedEnergy.KilowattHours;
                     result.BatteryMinSoC = batteryMinSoC;
                     result.BatteryMaxSoC = batteryMaxSoC;
                     result.BatteryAvgSoC = step != 0
@@ -355,21 +380,24 @@ namespace EpDeviceManagement.Simulation
                     {
                         result.GuardSummary = guarded.GuardSummary;
                     }
+
+                    if (strategy is GuardedStrategyWrapper wrap)
+                    {
+                        result.GuardSummary = wrap.GuardSummary;
+                    }
                 }
 
                 int dataPoint = 0;
-                foreach (var entry in dataSet.Data)
+                var packetProbabilityDecimalFractions = packetProbability.DecimalFractions;
+                foreach (var batch in dataSet.Data)
                 {
-                    loads[0].CurrentDemand = dataSet.GetLoadsTotalPower(entry);
-                    loads[0].MomentaneousDemand = dataSet.GetMomentaneousLoadsPower(entry);
-                    generators[0].CurrentGeneration = dataSet.GetGeneratorsTotalPower(entry);
-                    generators[0].MomentaneousGeneration = dataSet.GetMomentaneousGeneratorsPower(entry);
-                    generators[0].IsGenerating = true;
+                    load.MomentaryDemand = dataSet.GetLoad(batch[0]);
+                    generator.MomentaryGeneration = dataSet.GetGeneration(batch[0]);
 
                     ControlDecision decision;
                     try
                     {
-                        decision = strategy.DoControl(dataPoint, timeStep, loads, generators, lastDecision);
+                        decision = strategy.DoControl(dataPoint, timeStep, load, generator, lastDecision);
                     }
                     catch (Exception e)
                     {
@@ -378,80 +406,106 @@ namespace EpDeviceManagement.Simulation
                         result.FailReason = BatteryFailReason.Exception;
                         return result;
                     }
-                    Energy packet;
+                    EnergyFast packet = EnergyFast.Zero;
+                    // always do the same random calculation, no matter the decision of the algorithm
+                    // this provides the same environmental conditions, e.g. any algorithm that requests
+                    // an incoming transfer in step 325 will get the same result.
+                    // The chance to get an incoming transfer and an outgoing transfer in the same time step should not be equal
+                    var (allowIncoming, allowOutgoing) = (
+                        random.NextDouble() <= packetProbabilityDecimalFractions,
+                        random.NextDouble() <= packetProbabilityDecimalFractions);
                     if (decision is ControlDecision.RequestTransfer rt)
                     {
-                        var success = random.NextDouble() <= packetProbability.DecimalFractions;
-                        if (success)
+                        if (rt.RequestedDirection == PacketTransferDirection.Outgoing)
                         {
-                            if (rt.RequestedDirection == PacketTransferDirection.Outgoing)
+                            if (allowOutgoing)
                             {
                                 packet = packetSize;
-                                totalKwhOut += packetSize.KilowattHours;
+                                totalEnergyOut += packetSize;
                                 lastDecision = TransferResult.Success.Outgoing;
                             }
                             else
                             {
-                                packet = -packetSize;
-                                totalKwhIn += packetSize.KilowattHours;
-                                lastDecision = TransferResult.Success.Incoming;
+                                lastDecision = TransferResult.Failure.Outgoing;
                             }
                         }
-                        else
+                        else if (rt.RequestedDirection == PacketTransferDirection.Incoming)
                         {
-                            packet = Energy.Zero;
-                            lastDecision = TransferResult.Failure.For(rt.RequestedDirection);
-                        }
-                    }
-                    else
-                    {
-                        packet = Energy.Zero;
-                        lastDecision = TransferResult.NoTransferRequested.Instance;
-                    }
-
-                    var dischargePower = loads[0].CurrentDemand
-                                         - generators[0].CurrentGeneration
-                                         + packet / timeStep;
-                    if (dischargePower > Power.Zero)
-                    {
-                        if (dischargePower > battery.MaximumDischargePower)
-                        {
-                            SetResultValues();
-                            result.Success = false;
-                            result.FailReason = BatteryFailReason.ExceedDischargePower;
-                            return result;
-                        }
-                        battery.Simulate(timeStep, Power.Zero, dischargePower);
-                    }
-                    else
-                    {
-                        var chargePower = -dischargePower;
-                        if (chargePower > battery.MaximumChargePower)
-                        {
-                            if (chargePower - generators[0].CurrentGeneration > battery.MaximumChargePower)
+                            if (allowIncoming)
                             {
-                                SetResultValues();
-                                result.Success = false;
-                                result.FailReason = BatteryFailReason.ExceedChargePower;
-                                return result;
+                                packet = -packetSize;
+                                totalEnergyIn += packetSize;
+                                lastDecision = TransferResult.Success.Incoming;
                             }
                             else
                             {
-                                var reducedChargePower = battery.MaximumChargePower;
-                                var missed = chargePower - reducedChargePower;
-                                generatedKwhMissed += (missed * timeStep).KilowattHours;
-                                chargePower = reducedChargePower;
-                                generators[0].CurrentGeneration -= missed;
+                                lastDecision = TransferResult.Failure.Incoming;
                             }
                         }
+                    }
+                    else
+                    {
+                        packet = EnergyFast.Zero;
+                        lastDecision = TransferResult.NoTransferRequested.Instance;
+                    }
 
-                        if (generators[0].CurrentGeneration == Power.Zero)
+                    var packetPower = packet / timeStep;
+                    //var averageBatchLoad = batch.Average(dataSet.GetLoad);
+                    //var averageBatchGeneration = batch.Average(dataSet.GetGeneration);
+                    foreach (var entry in batch)
+                    {
+                        //var dischargePower = loads[0].CurrentDemand
+                        //                     - generators[0].CurrentGeneration
+                        //                     + packetPower;
+                        //var generation = dataSet.GetGeneration(entry);
+                        //var dischargePower = dataSet.GetLoad(entry)
+                        //                     - generation
+                        //                     + packetPower;
+                        var generation = dataSet.GetGeneration(entry);
+                        var dischargePower = dataSet.GetLoad(entry)
+                                             - generation
+                                             + packetPower;
+                        if (dischargePower > PowerFast.Zero)
                         {
-                            battery.Simulate(timeStep, chargePower, Power.Zero);
+                            if (dischargePower > battery.MaximumDischargePower)
+                            {
+                                SetResultValues();
+                                result.Success = false;
+                                result.FailReason = BatteryFailReason.ExceedDischargePower;
+                                return result;
+                            }
+                            battery.Simulate(dataTimeStep, PowerFast.Zero, dischargePower);
                         }
                         else
                         {
-                            DoBatteryChargingWithPvMppTracking(battery, generators[0], timeStep, chargePower, ref generatedKwhMissed);
+                            var chargePower = -dischargePower;
+                            if (chargePower > battery.MaximumChargePower)
+                            {
+                                if (chargePower - generation > battery.MaximumChargePower)
+                                {
+                                    SetResultValues();
+                                    result.Success = false;
+                                    result.FailReason = BatteryFailReason.ExceedChargePower;
+                                    return result;
+                                }
+                                else
+                                {
+                                    var reducedChargePower = battery.MaximumChargePower;
+                                    var missed = chargePower - reducedChargePower;
+                                    totalForfeitedEnergy += missed * dataTimeStep;
+                                    chargePower = reducedChargePower;
+                                    generation -= missed;
+                                }
+                            }
+
+                            if (generation == PowerFast.Zero)
+                            {
+                                battery.Simulate(dataTimeStep, chargePower, PowerFast.Zero);
+                            }
+                            else
+                            {
+                                DoBatteryChargingWithPvMppTracking(battery, generation, dataTimeStep, chargePower, ref totalForfeitedEnergy);
+                            }
                         }
                     }
                     step += 1;
@@ -460,7 +514,7 @@ namespace EpDeviceManagement.Simulation
                     batteryMaxSoC = Units.Max(batteryMaxSoC, battery.CurrentStateOfCharge);
                     batterySoCSum += battery.CurrentStateOfCharge;
 
-                    var belowZero = battery.CurrentStateOfCharge <= Energy.Zero;
+                    var belowZero = battery.CurrentStateOfCharge <= EnergyFast.Zero;
                     var exceedCapacity = battery.CurrentStateOfCharge >= battery.TotalCapacity;
                     if (belowZero || exceedCapacity)
                     {

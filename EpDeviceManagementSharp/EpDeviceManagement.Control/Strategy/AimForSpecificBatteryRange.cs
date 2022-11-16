@@ -2,29 +2,27 @@
 using EpDeviceManagement.Contracts;
 using EpDeviceManagement.Control.Strategy.Base;
 using EpDeviceManagement.Control.Strategy.Guards;
+using EpDeviceManagement.UnitsExtensions;
 using UnitsNet;
 
 namespace EpDeviceManagement.Control.Strategy;
 
-public class AimForSpecificBatteryRange : GuardedStrategy, IEpDeviceController
+public class AimForSpecificBatteryRange : IEpDeviceController
 {
     private readonly Ratio desiredMinimumLevel;
     private readonly Ratio desiredMaximumLevel;
     private readonly bool withGeneration;
-    private readonly Energy desiredMinimumStateOfCharge;
-    private readonly Energy desiredMaximumStateOfCharge;
+    private readonly PowerFast incomingPowerGuardBuffer;
+    private readonly PowerFast outgoingPowerGuardBuffer;
+    private readonly EnergyFast desiredMinimumStateOfCharge;
+    private readonly EnergyFast desiredMaximumStateOfCharge;
 
     public AimForSpecificBatteryRange(
         IStorage battery,
-        Energy packetSize,
+        EnergyFast packetSize,
         Ratio desiredMinimumLevel,
         Ratio desiredMaximumLevel,
-        bool withGeneration,
-        bool withOscillationGuard = true)
-        : base(
-            new BatteryCapacityGuard(battery, packetSize),
-            new BatteryPowerGuard(battery, packetSize),
-            withOscillationGuard ? new OscillationGuard() : DummyGuard.Instance)
+        bool withGeneration)
     {
         if (desiredMinimumLevel > desiredMaximumLevel)
         {
@@ -55,11 +53,11 @@ public class AimForSpecificBatteryRange : GuardedStrategy, IEpDeviceController
 
     private IStorage Battery { get; }
 
-    protected override ControlDecision DoUnguardedControl(
+    public ControlDecision DoControl(
         int dataPoint,
         TimeSpan timeStep,
-        ILoad[] loads,
-        IGenerator[] generators,
+        ILoad load,
+        IGenerator generator,
         TransferResult lastTransferResult)
     {
         if (this.Battery.CurrentStateOfCharge < desiredMinimumStateOfCharge)
@@ -77,9 +75,12 @@ public class AimForSpecificBatteryRange : GuardedStrategy, IEpDeviceController
         }
     }
 
-    public override string Name => "Battery Range";
+    public string Name => "Battery Range";
 
-    public override string Configuration => string.Create(CultureInfo.InvariantCulture, $"[{this.desiredMinimumLevel.DecimalFractions:F2}, {this.desiredMaximumLevel.DecimalFractions:F2}]");
+    public string Configuration => string.Create(CultureInfo.InvariantCulture,
+        $"[{this.desiredMinimumLevel.DecimalFractions:F1}, {this.desiredMaximumLevel.DecimalFractions:F1}] {{{this.incomingPowerGuardBuffer.Kilowatts:F0}, {this.outgoingPowerGuardBuffer.Kilowatts:F0}}}");
 
-    public override string PrettyConfiguration => $"[{desiredMinimumStateOfCharge},{desiredMaximumStateOfCharge}]";
+    public string PrettyConfiguration => $"[{desiredMinimumStateOfCharge},{desiredMaximumStateOfCharge}]";
+
+    public bool RequestsOutgoingPackets => this.withGeneration;
 }

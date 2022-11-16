@@ -18,9 +18,14 @@ public class DateTimeOffsetTypeConverter : DateTimeOffsetConverter
     {
         if (value is DateTimeOffset dto)
         {
-            return dto.ToString(Iso8601Format, CultureInfo.InvariantCulture);
+            return ConvertToString(dto);
         }
 
         return string.Empty;
+    }
+
+    public static string ConvertToString(DateTimeOffset dto)
+    {
+        return dto.ToString(Iso8601Format, CultureInfo.InvariantCulture);
     }
 }

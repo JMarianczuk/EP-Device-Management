@@ -1,14 +1,15 @@
+using EpDeviceManagement.UnitsExtensions;
 using UnitsNet;
 
 namespace EpDeviceManagement.Contracts;
 
 public interface IStorage
 {
-    public Energy TotalCapacity { get; }
+    public EnergyFast TotalCapacity { get; }
     
-    public Energy CurrentStateOfCharge { get; }
+    public EnergyFast CurrentStateOfCharge { get; }
     
-    public Power MaximumChargePower { get; }
+    public PowerFast MaximumChargePower { get; }
     
-    public Power MaximumDischargePower { get; }
+    public PowerFast MaximumDischargePower { get; }
 }

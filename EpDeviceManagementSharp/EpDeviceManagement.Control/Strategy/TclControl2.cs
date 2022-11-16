@@ -3,34 +3,32 @@ using System.Security.Cryptography;
 using EpDeviceManagement.Contracts;
 using EpDeviceManagement.Control.Strategy.Base;
 using EpDeviceManagement.Control.Strategy.Guards;
+using EpDeviceManagement.UnitsExtensions;
 using Stateless;
 using UnitsNet;
 
 namespace EpDeviceManagement.Control.Strategy;
 
-public class TclControl2 : GuardedStrategy, IEpDeviceController
+public class TclControl2 : IEpDeviceController
 {
     private readonly Ratio probabilisticModeLowerLevel;
     private readonly Ratio probabilisticModeUpperLevel;
-    private readonly Energy probabilisticModeUpperLimit;
-    private readonly Energy probabilisticModeLowerLimit;
+    private readonly EnergyFast probabilisticModeUpperLimit;
+    private readonly EnergyFast probabilisticModeLowerLimit;
     private readonly StateMachine stateMachine;
     private readonly RandomNumberGenerator random;
     private readonly bool withGeneration;
+    private readonly PowerFast incomingPowerGuardBuffer;
+    private readonly PowerFast outgoingPowerGuardBuffer;
     private readonly TimeSpan[] MttrByState;
 
     public TclControl2(
         IStorage battery,
-        Energy packetSize,
+        EnergyFast packetSize,
         Ratio probabilisticModeLowerLevel,
         Ratio probabilisticModeUpperLevel,
         RandomNumberGenerator random,
-        bool withGeneration,
-        bool withOscillationGuard)
-        : base(
-            new BatteryCapacityGuard(battery, packetSize),
-            new BatteryPowerGuard(battery, packetSize),
-            withOscillationGuard ? new OscillationGuard() : DummyGuard.Instance)
+        bool withGeneration)
     {
         Battery = battery;
         this.random = random;
@@ -91,17 +89,17 @@ public class TclControl2 : GuardedStrategy, IEpDeviceController
             ratio = 1 / ratio;
         }
         var mttr = this.MttrByState[state - 1];
-        var M_i = Frequency.FromHertz(1 / (2 * mttr.TotalSeconds));
+        var M_i = Frequency.FromHertz(1 / (mttr.TotalSeconds));
         var mu = ratio * M_i;
         var P_i = 1 - Math.Exp(-mu.Hertz * timeStep.TotalSeconds);
         return P_i;
     }
 
-    protected override ControlDecision DoUnguardedControl(
+    public ControlDecision DoControl(
         int dataPoint,
         TimeSpan timeStep,
-        ILoad[] loads,
-        IGenerator[] generators,
+        ILoad load,
+        IGenerator generator,
         TransferResult transferResult)
     {
         if (this.Battery.CurrentStateOfCharge >= probabilisticModeUpperLimit)
@@ -154,13 +152,10 @@ public class TclControl2 : GuardedStrategy, IEpDeviceController
         {
             case State.BatteryLow:
             {
-                foreach (var load in loads)
-                {
-                    if (load is IInterruptibleLoad { CanCurrentlyBeInterrupted: true, IsCurrentlyInInterruptedState: false } i)
-                    {
-                        i.Interrupt();
-                    }
-                }
+                //if (load is IInterruptibleLoad { CanCurrentlyBeInterrupted: true, IsCurrentlyInInterruptedState: false } i)
+                //{
+                //    i.Interrupt();
+                //}
 
                 return ControlDecision.RequestTransfer.Incoming;
             }
@@ -186,12 +181,14 @@ public class TclControl2 : GuardedStrategy, IEpDeviceController
         return ControlDecision.NoAction.Instance;
     }
 
-    public override string Name => "TCL Control 2";
+    public string Name => "Set-Point Range Control";
 
-    public override string Configuration => string.Create(CultureInfo.InvariantCulture,
-        $"[{this.probabilisticModeLowerLevel.DecimalFractions:F2}, {this.probabilisticModeUpperLevel.DecimalFractions:F2}]");
+    public string Configuration => string.Create(CultureInfo.InvariantCulture,
+        $"[{this.probabilisticModeLowerLevel.DecimalFractions:F1}, {this.probabilisticModeUpperLevel.DecimalFractions:F1}] {{{this.incomingPowerGuardBuffer.Kilowatts:F0}, {this.outgoingPowerGuardBuffer.Kilowatts:F0}}}");
 
-    public override string PrettyConfiguration => $"[{probabilisticModeLowerLimit}, {probabilisticModeUpperLimit}]";
+    public string PrettyConfiguration => $"[{probabilisticModeLowerLimit}, {probabilisticModeUpperLimit}]";
+
+    public bool RequestsOutgoingPackets => this.withGeneration;
 
     public enum State
     {

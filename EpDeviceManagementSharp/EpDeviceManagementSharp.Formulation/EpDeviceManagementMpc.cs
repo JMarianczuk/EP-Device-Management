@@ -4,6 +4,7 @@ using System.Runtime.CompilerServices;
 using EpDeviceManagement.Contracts;
 using EpDeviceManagement.Simulation.Heating;
 using EpDeviceManagement.Simulation.Storage;
+using EpDeviceManagement.UnitsExtensions;
 using LpSolveDotNet;
 using LpSolverBuilder.LpSolveDotNet;
 using UnitsNet;
@@ -74,10 +75,10 @@ public class EpDeviceManagementMpc
             Ratio.FromPercent(90),
             Ratio.FromPercent(110))
         {
-            CurrentStateOfCharge = Energy.FromKilowattHours(3),
-            TotalCapacity = Energy.FromKilowattHours(13.5 * usableStorageCapacity.DecimalFractions),
-            MaximumChargePower = Power.FromKilowatts(4.7),
-            MaximumDischargePower = Power.FromKilowatts(4.7),
+            CurrentStateOfCharge = EnergyFast.FromKilowattHours(3),
+            TotalCapacity = EnergyFast.FromKilowattHours(13.5 * usableStorageCapacity.DecimalFractions),
+            MaximumChargePower = PowerFast.FromKilowatts(4.7),
+            MaximumDischargePower = PowerFast.FromKilowatts(4.7),
         };
         var batteryTargetSoC = battery.TotalCapacity;
         var packetEnergy = Energy.FromKilowattHours(1);

@@ -1,8 +1,9 @@
-﻿using UnitsNet;
+﻿using EpDeviceManagement.UnitsExtensions;
+using UnitsNet;
 
 namespace EpDeviceManagement.Contracts;
 
 public interface IGenerator
 {
-    Power MomentaneousGeneration { get; }
+    PowerFast MomentaryGeneration { get; }
 }

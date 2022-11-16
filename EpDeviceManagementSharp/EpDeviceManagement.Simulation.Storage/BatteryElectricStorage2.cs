@@ -1,14 +1,15 @@
 ﻿using EpDeviceManagement.Contracts;
+using EpDeviceManagement.UnitsExtensions;
 using UnitsNet;
 
 namespace EpDeviceManagement.Simulation.Storage;
 
 public class BatteryElectricStorage2 : IStorage
 {
-    private Energy currentStateOfCharge;
+    private EnergyFast currentStateOfCharge;
 
     public BatteryElectricStorage2(
-        Power standbyPower,
+        PowerFast standbyPower,
         Ratio chargingEfficiency,
         Ratio dischargingEfficiency)
     {
@@ -22,32 +23,38 @@ public class BatteryElectricStorage2 : IStorage
             throw new ArgumentOutOfRangeException(nameof(dischargingEfficiency));
         }
         this.StandbyPower = standbyPower;
-        this.ChargingEfficiency = (decimal) chargingEfficiency.DecimalFractions;
-        this.DischargingEfficiency = (decimal) dischargingEfficiency.DecimalFractions;
+        this.ChargingEfficiency = chargingEfficiency.DecimalFractions;
+        this.DischargingEfficiency = dischargingEfficiency.DecimalFractions;
     }
 
-    public Power StandbyPower { get; }
-    public decimal ChargingEfficiency { get; }
-    public decimal DischargingEfficiency { get; }
-    
-    public Energy TotalCapacity { get; init; }
+    public PowerFast StandbyPower { get; }
+    public double ChargingEfficiency { get; }
+    public double DischargingEfficiency { get; }
 
-    public Energy CurrentStateOfCharge
+    public EnergyFast TotalCapacity { get; init; }
+
+    public EnergyFast CurrentStateOfCharge
     {
         get => currentStateOfCharge;
         init => currentStateOfCharge = value;
     }
 
-    public Power MaximumChargePower { get; init; }
-    public Power MaximumDischargePower { get; init; }
+    public PowerFast MaximumChargePower { get; init; }
 
-    public void Simulate(TimeSpan timeStep, Power chargeRate, Power dischargeRate)
+    public PowerFast MaximumDischargePower { get; init; }
+
+    public void Simulate(TimeSpan timeStep, PowerFast chargeRate, PowerFast dischargeRate)
     {
         var newSoC = TrySimulate(timeStep, chargeRate, dischargeRate);
 
-        if (newSoC < Energy.Zero)
+        TrySetNewSoc(newSoC);
+    }
+
+    public void TrySetNewSoc(EnergyFast newSoC)
+    {
+        if (newSoC < EnergyFast.Zero)
         {
-            newSoC = Energy.Zero;
+            newSoC = EnergyFast.Zero;
         }
 
         if (newSoC > this.TotalCapacity)
@@ -58,7 +65,7 @@ public class BatteryElectricStorage2 : IStorage
         this.currentStateOfCharge = newSoC;
     }
 
-    public Energy TrySimulate(TimeSpan timeStep, Power chargeRate, Power dischargeRate)
+    public EnergyFast TrySimulate(TimeSpan timeStep, PowerFast chargeRate, PowerFast dischargeRate)
     {
         var chargeDifference = timeStep *
                                (this.ChargingEfficiency * chargeRate

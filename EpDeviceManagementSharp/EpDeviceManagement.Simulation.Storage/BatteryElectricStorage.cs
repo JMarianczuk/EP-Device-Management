@@ -1,11 +1,12 @@
 ﻿using EpDeviceManagement.Contracts;
+using EpDeviceManagement.UnitsExtensions;
 using UnitsNet;
 
 namespace EpDeviceManagement.Simulation.Storage;
 
 public class BatteryElectricStorage : IStorage
 {
-    private Energy currentStateOfCharge;
+    private EnergyFast currentStateOfCharge;
 
     public BatteryElectricStorage(
         Frequency standingLosses,
@@ -22,26 +23,26 @@ public class BatteryElectricStorage : IStorage
             throw new ArgumentOutOfRangeException(nameof(dischargingEfficiency));
         }
         this.StandingLosses = standingLosses;
-        this.ChargingEfficiency = (decimal) chargingEfficiency.DecimalFractions;
-        this.DischargingEfficiency = (decimal) dischargingEfficiency.DecimalFractions;
+        this.ChargingEfficiency = chargingEfficiency.DecimalFractions;
+        this.DischargingEfficiency = dischargingEfficiency.DecimalFractions;
     }
 
     public Frequency StandingLosses { get; }
-    public decimal ChargingEfficiency { get; }
-    public decimal DischargingEfficiency { get; }
+    public double ChargingEfficiency { get; }
+    public double DischargingEfficiency { get; }
     
-    public Energy TotalCapacity { get; init; }
+    public EnergyFast TotalCapacity { get; init; }
 
-    public Energy CurrentStateOfCharge
+    public EnergyFast CurrentStateOfCharge
     {
         get => currentStateOfCharge;
         init => currentStateOfCharge = value;
     }
 
-    public Power MaximumChargePower { get; init; }
-    public Power MaximumDischargePower { get; init; }
+    public PowerFast MaximumChargePower { get; init; }
+    public PowerFast MaximumDischargePower { get; init; }
 
-    public void Simulate(TimeSpan timeStep, Power chargeRate, Power dischargeRate)
+    public void Simulate(TimeSpan timeStep, PowerFast chargeRate, PowerFast dischargeRate)
     {
         var chargeDifference = timeStep *
                                (this.ChargingEfficiency * chargeRate
@@ -49,9 +50,9 @@ public class BatteryElectricStorage : IStorage
         var standingLossRate = this.StandingLosses * this.CurrentStateOfCharge;
         var standingLoss = standingLossRate * timeStep;
         var newSoC = this.CurrentStateOfCharge + chargeDifference - standingLoss;
-        if (newSoC < Energy.Zero)
+        if (newSoC < EnergyFast.Zero)
         {
-            newSoC = Energy.Zero;
+            newSoC = EnergyFast.Zero;
         }
 
         if (newSoC > this.TotalCapacity)

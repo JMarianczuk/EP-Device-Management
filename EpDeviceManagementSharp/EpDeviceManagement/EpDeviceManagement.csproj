@@ -10,4 +10,8 @@
       <PackageReference Include="UnitsNet" Version="4.145.0" />
     </ItemGroup>
 
+    <ItemGroup>
+      <ProjectReference Include="..\EpDeviceManagement.UnitsExtensions\EpDeviceManagement.UnitsExtensions.csproj" />
+    </ItemGroup>
+
 </Project>

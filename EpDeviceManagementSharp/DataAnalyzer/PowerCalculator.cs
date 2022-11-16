@@ -13,10 +13,13 @@ public class PowerCalculator
     {
         var files = new[]
         {
-            1,
-            5,
-            15,
-            60,
+            //1,
+            //5,
+            //15,
+            //60,
+            //240,
+            //360,
+            1440,
         };
         foreach (var f in files)
         {

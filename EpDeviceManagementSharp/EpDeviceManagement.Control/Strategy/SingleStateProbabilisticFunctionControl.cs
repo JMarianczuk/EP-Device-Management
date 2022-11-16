@@ -10,7 +10,7 @@ using UnitsNet;
 
 namespace EpDeviceManagement.Control.Strategy;
 
-public abstract class SingleStateProbabilisticFunctionControl : GuardedStrategy, IEpDeviceController
+public abstract class SingleStateProbabilisticFunctionControl : IEpDeviceController
 {
     private readonly Ratio lowerLevel;
     private readonly Ratio upperLevel;
@@ -18,16 +18,11 @@ public abstract class SingleStateProbabilisticFunctionControl : GuardedStrategy,
 
     protected SingleStateProbabilisticFunctionControl(
         IStorage battery,
-        Energy packetSize,
+        EnergyFast packetSize,
         Ratio lowerLevel,
         Ratio upperLevel,
         RandomNumberGenerator random,
-        bool withGeneration,
-        bool withOscillationGuard)
-        : base(
-            new BatteryCapacityGuard(battery, packetSize),
-            new BatteryPowerGuard(battery, packetSize),
-            withOscillationGuard ? new OscillationGuard() : DummyGuard.Instance)
+        bool withGeneration)
     {
         this.lowerLevel = lowerLevel;
         this.upperLevel = upperLevel;
@@ -43,30 +38,32 @@ public abstract class SingleStateProbabilisticFunctionControl : GuardedStrategy,
 
     protected IStorage Battery { get; }
 
-    protected Energy PacketSize { get; }
+    protected EnergyFast PacketSize { get; }
 
     protected bool WithGeneration { get; }
 
-    protected Energy LowerLimit { get; }
+    protected EnergyFast LowerLimit { get; }
     
-    protected Energy UpperLimit { get; }
+    protected EnergyFast UpperLimit { get; }
 
-    protected Energy MiddleLimit { get; }
+    protected EnergyFast MiddleLimit { get; }
 
-    public override string Name => "Probabilistic Range Control";
+    public virtual string Name => "Probabilistic Range Control";
 
-    public override string Configuration => string.Create(CultureInfo.InvariantCulture,
-        $"[{this.lowerLevel.DecimalFractions:F2}, {this.upperLevel.DecimalFractions:F2}]");
+    public virtual string Configuration => string.Create(CultureInfo.InvariantCulture,
+        $"[{this.lowerLevel.DecimalFractions:F1}, {this.upperLevel.DecimalFractions:F1}]");
 
-    public override string PrettyConfiguration => $"[{this.lowerLevel}, {this.upperLevel}]";
+    public virtual string PrettyConfiguration => $"[{this.lowerLevel}, {this.upperLevel}]";
 
-    protected virtual Energy AssumedCurrentBatterySoC => this.Battery.CurrentStateOfCharge;
+    public virtual bool RequestsOutgoingPackets => this.WithGeneration;
 
-    protected override ControlDecision DoUnguardedControl(
+    protected virtual EnergyFast AssumedCurrentBatterySoC => this.Battery.CurrentStateOfCharge;
+
+    public virtual ControlDecision DoControl(
         int dataPoint,
         TimeSpan timeStep,
-        ILoad[] loads,
-        IGenerator[] generators,
+        ILoad load,
+        IGenerator generator,
         TransferResult lastTransferResult)
     {
         if (this.AssumedCurrentBatterySoC < this.LowerLimit)
