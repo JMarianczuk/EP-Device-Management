@@ -20,14 +20,18 @@ get_mid <- function(earlier_date, later_date, earlier_value, later_value) {
 
 load_name <- "Load [kW]"
 generation_name <- "Generation [kW]"
-net_load_name <- "Net load [kW]"
+net_load_name <- "Effective power [kW]"
 
 for (data_set in c(
-    "1",
-    "2",
-    "3",
-    "4",
-    "4_grid"
+    "1LG",
+    "2L",
+    "3L",
+    "3LG",
+    "4LG",
+    "4_Grid",
+    "5L",
+    "6LG",
+    "6_Grid"
 )) {
 for (ts in c(
     60,
@@ -35,7 +39,7 @@ for (ts in c(
     360,
     1440
 )) {
-    table_name <- paste0("data_Res", data_set, "_", ts, "min")
+    table_name <- paste0("data_R", data_set, "_", ts, "min")
     query <- paste(
         paste(
             "select",
@@ -106,9 +110,14 @@ for (ts in c(
         geom_line() +
         geom_hline(data = line_at_zero, aes(yintercept = value), color = "black") +
         facet_grid(rows = vars(facet_f), scales = "free_y", switch = "both") +
-        scale_x_datetime(expand=c(0.01, 0)) +
-        theme(axis.title.y = element_blank())
+        scale_x_datetime(expand = c(0.01, 0)) +
+        labs(colour = "Type of Load") +
+        xlab("Date and Time") +
+        theme(
+            legend.position = "bottom",
+            axis.title.y = element_blank())
 
-    ggsave(paste0("dataplots/data_Res", data_set, "_", ts, "min.pdf"), thisplot, height = 15, width = 25, units = "cm")
+    ggsave(paste0("dataplots/data_R", data_set, "_", ts, "min.pdf"), thisplot, height = 15, width = 25, units = "cm")
 }}
 
+dbDisconnect(con)

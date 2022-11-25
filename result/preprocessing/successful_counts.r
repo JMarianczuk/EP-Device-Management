@@ -114,6 +114,7 @@ internal_calculate_top_ten <- function(
                 "simulation",
                 where)
             res <- dbGetQuery(con, query)
+            if (nrow(res) == 0) return()
             formula_by <- paste(by, collapse = " + ")
             energy_in_formula <- as.formula(paste("energy_kwh_in ~", formula_by))
             wasted_energy_formula <- as.formula(paste("energy_kwh_wasted ~", formula_by))
@@ -269,7 +270,9 @@ calculate_top_ten <- function(con, by, name, config_name) {
     }
 }
 
-preprocess_successful_counts <- function(by, name, con) {
+preprocess_successful_counts <- function(by, name, con, filter = "") {
+    create_simulation_with_fail_type(con)
+    fails <- dbGetQuery(con, "select fail from distinct_fail")[,]
     table_name <- successful_counts_table_name(name)
     query <- paste(
         "CREATE TABLE IF NOT EXISTS",
@@ -282,9 +285,11 @@ preprocess_successful_counts <- function(by, name, con) {
             "count(*) as count",
             "0 as topTen",
             "0 as ordering",
+            paste("count(", fails, ") as", fails, collapse = ","),
             sep = ","),
         "FROM",
-        "simulation",
+        "simulation_with_fail_type",
+        filter,
         "GROUP BY",
         paste(
             paste(by, collapse = ","),
@@ -303,17 +308,26 @@ preprocess_successful_counts <- function(by, name, con) {
         paste(
             "s.*",
             "c.count",
+            "c.count + tc.count as totalCount",
             "c.topTen",
             "c.ordering",
             "d.totalIncoming_kWh as min_incoming",
             sep = ","),
         "FROM",
         "simulation s",
+
         "JOIN",
         paste0("successful_counts_", name, " c"),
         "ON",
         paste0("s.", by, " = c.", by, collapse = " AND "),
         "AND s.success = c.success",
+
+        "JOIN",
+        paste0("successful_counts_", name, " tc"),
+        "ON",
+        paste0("s.", by, " = tc.", by, collapse = " AND "),
+        "AND s.success <> tc.success",
+
         "JOIN",
         "data_stat d",
         "ON",

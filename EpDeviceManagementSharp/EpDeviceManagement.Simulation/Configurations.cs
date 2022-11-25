@@ -59,7 +59,7 @@ public class SimulationResult
 
     public string StrategyConfiguration { get; init; } = string.Empty;
 
-    public string StrategyPrettyConfiguration { get; init; } = string.Empty;
+    //public string StrategyPrettyConfiguration { get; init; } = string.Empty;
 
     public string DataConfiguration { get; init; } = string.Empty;
 

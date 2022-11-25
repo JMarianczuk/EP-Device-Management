@@ -25,6 +25,11 @@ public struct EnergyFast
 
     public double KilowattHours => this.joules / wattSecondsInAKilowattHour;
 
+    public override string ToString()
+    {
+        return $"{this.KilowattHours} kWh";
+    }
+
     public static EnergyFast operator +(EnergyFast left, EnergyFast right)
         => new(left.joules + right.joules);
 

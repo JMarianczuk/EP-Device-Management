@@ -24,7 +24,7 @@ public abstract class GuardedStrategy : IEpDeviceController
         var result = true;
         foreach (var g in guards)
         {
-            if (!g.CanRequestIncoming(timeStep, load, generator))
+            if (!g.CanRequestToReceive(timeStep, load, generator))
             {
                 this.IncrementGuardCounter(g);
                 // do not return here just yet, we wish to capture all the guards, not primarily the ones with precedence
@@ -39,7 +39,7 @@ public abstract class GuardedStrategy : IEpDeviceController
         var result = true;
         foreach (var g in this.guards)
         {
-            if (!g.CanRequestOutgoing(timeStep, load, generator))
+            if (!g.CanRequestToSend(timeStep, load, generator))
             {
                 this.IncrementGuardCounter(g);
                 result = false;
@@ -96,32 +96,30 @@ public abstract class GuardedStrategy : IEpDeviceController
     public abstract bool RequestsOutgoingPackets { get; }
 
     protected abstract ControlDecision DoUnguardedControl(
-        int dataPoint,
         TimeSpan timeStep,
         ILoad load,
         IGenerator generator,
         TransferResult lastTransferResult);
 
     public ControlDecision DoControl(
-        int dataPoint,
         TimeSpan timeStep,
         ILoad load,
         IGenerator generator,
         TransferResult lastTransferResult)
     {
         this.ReportLastTransfer(lastTransferResult);
-        var decision = this.DoUnguardedControl(dataPoint, timeStep, load, generator, lastTransferResult);
+        var decision = this.DoUnguardedControl(timeStep, load, generator, lastTransferResult);
         if (decision is ControlDecision.RequestTransfer request)
         {
-            switch (request.RequestedDirection)
+            switch (request.RequestedAction)
             {
-                case PacketTransferDirection.Incoming:
+                case PacketTransferAction.Receive:
                     if (!this.CanRequestIncoming(timeStep, load, generator))
                     {
                         decision = ControlDecision.NoAction.Instance;
                     }
                     break;
-                case PacketTransferDirection.Outgoing:
+                case PacketTransferAction.Send:
                     if (!this.CanRequestOutgoing(timeStep, load, generator))
                     {
                         decision = ControlDecision.NoAction.Instance;

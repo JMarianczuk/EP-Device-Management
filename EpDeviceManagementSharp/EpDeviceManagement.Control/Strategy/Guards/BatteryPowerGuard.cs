@@ -1,6 +1,5 @@
 ﻿using System.Globalization;
 using EpDeviceManagement.Contracts;
-using EpDeviceManagement.Control.Extensions;
 using EpDeviceManagement.UnitsExtensions;
 using UnitsNet;
 
@@ -8,23 +7,36 @@ namespace EpDeviceManagement.Control.Strategy.Guards;
 
 public sealed class BatteryPowerGuard : BatteryGuardBase, IControlGuard
 {
-    private readonly PowerFast outgoingGuardBuffer;
+    private readonly PowerFast receiveGuardMargin;
+    private readonly PowerFast sendGuardMargin;
 
     public BatteryPowerGuard(
         IStorage battery,
         EnergyFast packetSize,
-        PowerFast outgoingGuardBuffer)
+        PowerFast receiveGuardMargin,
+        PowerFast sendGuardMargin,
+        bool strategyRequestsOutgoing)
         : base(
             battery,
             packetSize)
     {
-        this.outgoingGuardBuffer = outgoingGuardBuffer;
+        this.receiveGuardMargin = receiveGuardMargin;
+        this.sendGuardMargin = sendGuardMargin;
+        if (strategyRequestsOutgoing)
+        {
+            this.Configuration = string.Create(CultureInfo.InvariantCulture,
+                $"{this.receiveGuardMargin.Kilowatts:F1}, {this.sendGuardMargin.Kilowatts:F1}");
+        }
+        else
+        {
+            this.Configuration = string.Create(CultureInfo.InvariantCulture,
+                $"{this.receiveGuardMargin.Kilowatts:F1}");
+        }
     }
 
-    public string Configuration => string.Create(CultureInfo.InvariantCulture,
-        $"{this.outgoingGuardBuffer.Kilowatts:F0}");
+    public string Configuration { get; }
 
-    public bool CanRequestIncoming(TimeSpan timeStep, ILoad load, IGenerator generator)
+    public bool CanRequestToReceive(TimeSpan timeStep, ILoad load, IGenerator generator)
     {
         var expectedDischargePower = load.MomentaryDemand
                                      - generator.MomentaryGeneration
@@ -36,18 +48,18 @@ public sealed class BatteryPowerGuard : BatteryGuardBase, IControlGuard
         else
         {
             var expectedChargePower = -expectedDischargePower;
-            return expectedChargePower < this.Battery.MaximumChargePower;
+            return expectedChargePower + this.receiveGuardMargin < this.Battery.MaximumChargePower;
         }
     }
 
-    public bool CanRequestOutgoing(TimeSpan timeStep, ILoad load, IGenerator generator)
+    public bool CanRequestToSend(TimeSpan timeStep, ILoad load, IGenerator generator)
     {
         var expectedDischargePower = load.MomentaryDemand
                                      - generator.MomentaryGeneration
                                      + this.PacketSize / timeStep;
         if (expectedDischargePower > PowerFast.Zero)
         {
-            return expectedDischargePower + this.outgoingGuardBuffer < this.Battery.MaximumDischargePower;
+            return expectedDischargePower + this.sendGuardMargin < this.Battery.MaximumDischargePower;
         }
         else
         {

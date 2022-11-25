@@ -11,15 +11,15 @@ public abstract class ControlDecision
 
         public static RequestTransfer Incoming { get; } = new RequestTransfer()
         {
-            RequestedDirection = PacketTransferDirection.Incoming,
+            RequestedAction = PacketTransferAction.Receive,
         };
 
         public static RequestTransfer Outgoing { get; } = new RequestTransfer()
         {
-            RequestedDirection = PacketTransferDirection.Outgoing,
+            RequestedAction = PacketTransferAction.Send,
         };
 
-        public PacketTransferDirection RequestedDirection { get; init; }
+        public PacketTransferAction RequestedAction { get; init; }
     }
 
     public sealed class AcceptIncomingRequest : ControlDecision
@@ -40,8 +40,8 @@ public abstract class ControlDecision
     }
 }
 
-public enum PacketTransferDirection
+public enum PacketTransferAction
 {
-    Outgoing,
-    Incoming,
+    Send,
+    Receive,
 }

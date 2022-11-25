@@ -54,6 +54,14 @@ public class EnhancedPowerDataSet
 
     public PowerFast Residential5_Load { get; init; }
 
+    public PowerFast Residential6_Load { get; init; }
+
+    public PowerFast Residential6_Generation { get; init; }
+
+    public PowerFast Residential6_Import { get; init; }
+
+    public PowerFast Residential6_Export { get; init; }
+
     public PowerFast Industrial3_Load { get; init; }
 
     public PowerFast Industrial3_ControllableLoad { get; init; }

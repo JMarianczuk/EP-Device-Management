@@ -1,6 +1,5 @@
 ﻿using System.Globalization;
 using System.Text;
-using EpDeviceManagement.Data;
 using EpDeviceManagement.Simulation;
 using EpDeviceManagement.Simulation.Storage;
 using EpDeviceManagement.UnitsExtensions;
@@ -19,6 +18,23 @@ public class Analyzer
         //var enhanced = TestData.GetDataSets
     }
 
+    private class ExtremeValueDef
+    {
+        public double MinValue { get; set; }
+
+        public DateTimeOffset MinTime { get; set; }
+
+        public double MaxValue { get; set; }
+
+        public DateTimeOffset MaxTime { get; set; }
+
+        public override string ToString()
+        {
+            return string.Create(CultureInfo.InvariantCulture,
+                $"{MinValue} at {MinTime}, {MaxValue} at {MaxTime}");
+        }
+    }
+
     public static async Task AnalyzePowerDifferenceAsync()
     {
         var timeStep = TimeSpan.FromMinutes(5);
@@ -30,125 +46,99 @@ public class Analyzer
 
         foreach (var ds in data)
         {
-            double maxNetLoad = -1d;
-            double maxNetGen = -1d;
+            var diffMomentaryAvgLoad = new ExtremeValueDef();
+            var diffMomentaryAvgGen = new ExtremeValueDef();
+            var diffMomentaryAvgEff = new ExtremeValueDef();
 
-            double maxLoadDiffKwAvg = -1d;
-            double maxGenDiffKwAvg = -1d;
+            var diffMomentaryStepLoad = new ExtremeValueDef();
+            var diffMomentaryStepGen = new ExtremeValueDef();
+            var diffMomentaryStepEff = new ExtremeValueDef();
 
-            double maxLoadDiffKwStep = -1d;
-            double maxGenDiffKwStep = -1d;
-            DateTimeOffset loadNetTime = default;
-            DateTimeOffset loadAvgTime = default;
-            DateTimeOffset loadStepTime = default;
-            DateTimeOffset genNetTime = default;
-            DateTimeOffset genAvgTime = default;
-            DateTimeOffset genStepTime = default;
+            int signChangeMomentaryAvgEffToPositive = 0;
+            int signChangeMomentaryAvgEffToNegative = 0;
+
+            double Load(EnhancedPowerDataSet entry) => ds.GetLoad(entry).Kilowatts;
+            double Gen(EnhancedPowerDataSet entry) => ds.GetGeneration(entry).Kilowatts;
+
+            void MinMax(double value, DateTimeOffset timeStep, ExtremeValueDef def)
+            {
+                if (value < def.MinValue)
+                {
+                    def.MinValue = value;
+                    def.MinTime = timeStep;
+                }
+
+                if (value > def.MaxValue)
+                {
+                    def.MaxValue = value;
+                    def.MaxTime = timeStep;
+                }
+            }
 
             foreach (var entry in ds.Data)
             {
-                var momentaryLoad = ds.GetLoad(entry[0]);
-                var totalLoad = entry.Average(ds.GetLoad);
-                var maxLoad = entry.Skip(1).Max(ds.GetLoad);
+                var t = entry[0].Timestamp;
+                var momentaryLoad = Load(entry[0]);
+                var momentaryGen = Gen(entry[0]);
+                var momentaryEff = momentaryLoad - momentaryGen;
 
-                var avgLoadDiff = Math.Abs((momentaryLoad - totalLoad).Kilowatts);
-                var stepLoadDiff = Math.Abs((momentaryLoad - maxLoad).Kilowatts);
+                var avgLoad = entry.Select(Load).Average();
+                var avgGen = entry.Select(Gen).Average();
+                var avgEff = entry.Select(x => Load(x) - Gen(x)).Average();
 
-                var momentaryGeneration = ds.GetGeneration(entry[0]);
-                var totalGeneration = entry.Average(ds.GetGeneration);
-                var maxGeneration = entry.Skip(1).Max(ds.GetGeneration);
-
-                var avgGenDiff = Math.Abs((momentaryGeneration - totalGeneration).Kilowatts);
-                var stepGenDiff = Math.Abs((momentaryGeneration - maxGeneration).Kilowatts);
-
-                if (avgLoadDiff > maxLoadDiffKwAvg)
+                MinMax(momentaryLoad - avgLoad, t, diffMomentaryAvgLoad);
+                MinMax(momentaryGen - avgGen, t, diffMomentaryAvgGen);
+                MinMax(momentaryEff - avgEff, t, diffMomentaryAvgEff);
+                if (momentaryEff < 0 && avgEff > 0)
                 {
-                    maxLoadDiffKwAvg = avgLoadDiff;
-                    loadAvgTime = entry[0].Timestamp;
+                    signChangeMomentaryAvgEffToPositive += 1;
                 }
 
-                if (stepLoadDiff > maxLoadDiffKwStep)
+                if (momentaryEff > 0 && avgEff < 0)
                 {
-                    maxLoadDiffKwStep = stepLoadDiff;
-                    loadStepTime = entry[0].Timestamp;
+                    signChangeMomentaryAvgEffToNegative += 1;
                 }
 
-                if (avgGenDiff > maxGenDiffKwAvg)
+                for (var i = 1; i < entry.Count; i += 1)
                 {
-                    maxGenDiffKwAvg = avgGenDiff;
-                    genAvgTime = entry[0].Timestamp;
-                }
-
-                if (stepGenDiff > maxGenDiffKwStep)
-                {
-                    maxGenDiffKwStep = stepGenDiff;
-                    genStepTime = entry[0].Timestamp;
-                }
-
-                foreach (var dataSet in entry)
-                {
-                    var netLoad = ds.GetLoad(dataSet) - ds.GetGeneration(dataSet);
-                    if (netLoad > PowerFast.Zero)
-                    {
-                        if (netLoad.Kilowatts > maxNetLoad)
-                        {
-                            maxNetLoad = netLoad.Kilowatts;
-                            loadNetTime = dataSet.Timestamp;
-                        }
-                    }
-                    else
-                    {
-                        var netGeneration = -netLoad;
-                        if (netGeneration.Kilowatts > maxNetGen)
-                        {
-                            maxNetGen = netGeneration.Kilowatts;
-                            genNetTime = dataSet.Timestamp;
-                        }
-                    }
+                    var stepLoad = Load(entry[i]);
+                    var stepGen = Gen(entry[i]);
+                    var stepEff = stepLoad - stepGen;
+                    MinMax(momentaryLoad - stepLoad, t,diffMomentaryStepLoad);
+                    MinMax(momentaryGen - stepGen, t, diffMomentaryStepGen);
+                    MinMax(momentaryEff - stepEff, t, diffMomentaryStepEff);
                 }
             }
 
+            string ValueAndPercent(int signChanges) => $"{signChanges} ({100d * signChanges / ds.Data.Count:F2}%)";
             Console.WriteLine(string.Join(Environment.NewLine,
-                    $"Data set {ds.Configuration}",
-                    $"differs on avg by {maxLoadDiffKwAvg} kW for loads at {loadAvgTime} and {maxGenDiffKwAvg} kW for generation at {genAvgTime}",
-                    $"and for the step by {maxLoadDiffKwStep} kW for loads at {loadStepTime} and {maxGenDiffKwStep} kW for generation at {genStepTime}",
-                    $"and has the largest power with {maxNetLoad} kW for loads at {loadNetTime} and {maxNetGen} kW for generation at {genNetTime}"));
+                $"Data Set {ds.Configuration}",
+                $"Difference between momentary and average",
+                $"Load: {diffMomentaryAvgLoad}",
+                $"Generation: {diffMomentaryAvgGen}",
+                $"Effective: {diffMomentaryAvgEff}",
+                $"Difference between momentary and step",
+                $"Load: {diffMomentaryStepLoad}",
+                $"Generation: {diffMomentaryStepGen}",
+                $"Effective: {diffMomentaryStepEff}",
+                $"Sign changed between momentary and average",
+                $"ToPositive: {ValueAndPercent(signChangeMomentaryAvgEffToPositive)}, ToNegative: {ValueAndPercent(signChangeMomentaryAvgEffToNegative)}, Total: {ValueAndPercent(signChangeMomentaryAvgEffToPositive + signChangeMomentaryAvgEffToNegative)}",
+                ""));
+            //Console.WriteLine(string.Join(Environment.NewLine,
+            //        $"Data set {ds.Configuration}",
+            //        $"differs on avg by {maxLoadDiffKwAvg} kW for loads at {loadAvgTime} and {maxGenDiffKwAvg} kW for generation at {genAvgTime}",
+            //        $"and for the step by {maxLoadDiffKwStep} kW for loads at {loadStepTime} and {maxGenDiffKwStep} kW for generation at {genStepTime}",
+            //        $"and has the largest power with {maxEffectivePower} kW for loads at {maxEffectiveTime} and {-minEffectivePower} kW for generation at {minEffectiveTime}",
+            //        $"the effective power changed sign {effectivePowerSignChangeCount} out of {ds.Data.Count} control steps ({100d * effectivePowerSignChangeCount / ds.Data.Count}%)"));
+            //Console.WriteLine("");
         }
-    }
-
-    public static async Task AnalyzeGridImport()
-    {
-        var filename = TestData.GetFileName(TimeSpan.FromMinutes(5));
-
-        var (data, handle) = new ReadDataFromCsv().ReadAsync2(filename);
-        var min = Power.FromKilowatts(1000000);
-        var max = Power.FromKilowatts(-1000000);
-
-        var nullCount = 0;
-        var nonNullCount = 0;
-
-        using (var progress = new ConsoleProgressBar())
-        {
-            var oneYearOfSteps = TimeSpan.FromDays(365) / TimeSpan.FromMinutes(5);
-            progress.Setup((int) (5 * oneYearOfSteps), "Analying");
-            await foreach (var entry in data)
-            {
-                var l1 = PowerFast.FromKilowatts(entry.DE_KN_residential5_grid_import);
-                var ex = PowerFast.FromKilowatts(entry.DE_KN_residential6_grid_export);
-                var g1 = PowerFast.FromKilowatts(entry.DE_KN_residential6_pv);
-                var actual = TestData.GetLoad(l1, ex, g1);
-
-                progress.FinishOne();
-            }
-        }
-
-        Console.WriteLine($"Null: {nullCount}, NonNull: {nonNullCount}");
     }
 
     public static async Task WritePowerValuesToDatabase()
     {
         foreach (var ts in new[]
                  {
+                     1,
                      5,
                      15,
                      60,
@@ -351,6 +341,12 @@ CREATE TABLE
         }
 
         var dirs = here.GetDirectories();
-        return dirs.First(d => d.Name == "result");
+        return dirs.First(
+#if EXPERIMENTAL
+            d => d.Name == "result-experimental"
+#else
+            d => d.Name == "result"
+#endif
+            );
     }
 }

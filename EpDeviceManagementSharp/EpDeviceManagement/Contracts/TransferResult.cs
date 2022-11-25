@@ -2,76 +2,76 @@
 
 public abstract class TransferResult
 {
-    public sealed class Success : TransferResult
+    public sealed class Granted : TransferResult
     {
-        private Success()
+        private Granted()
         {
 
         }
 
-        public static Success Incoming { get; } = new Success()
+        public static Granted Receive { get; } = new Granted()
         {
-            PerformedDirection = PacketTransferDirection.Incoming,
+            PerformedAction = PacketTransferAction.Receive,
         };
 
-        public static Success Outgoing { get; } = new Success()
+        public static Granted Send { get; } = new Granted()
         {
-            PerformedDirection = PacketTransferDirection.Outgoing,
+            PerformedAction = PacketTransferAction.Send,
         };
 
-        public static TransferResult For(PacketTransferDirection direction)
+        public static TransferResult For(PacketTransferAction action)
         {
-            switch (direction)
+            switch (action)
             {
-                case PacketTransferDirection.Incoming:
-                    return Incoming;
-                case PacketTransferDirection.Outgoing:
-                    return Outgoing;
+                case PacketTransferAction.Receive:
+                    return Receive;
+                case PacketTransferAction.Send:
+                    return Send;
             }
 
-            return new Success()
+            return new Granted()
             {
-                PerformedDirection = direction,
+                PerformedAction = action,
             };
         }
 
-        public PacketTransferDirection PerformedDirection { get; init; }
+        public PacketTransferAction PerformedAction { get; init; }
     }
 
-    public sealed class Failure : TransferResult
+    public sealed class Declined : TransferResult
     {
-        private Failure()
+        private Declined()
         {
 
         }
 
-        public static Failure Incoming { get; } = new Failure()
+        public static Declined Receive { get; } = new Declined()
         {
-            RequestedDirection = PacketTransferDirection.Incoming,
+            RequestedAction = PacketTransferAction.Receive,
         };
 
-        public static Failure Outgoing { get; } = new Failure()
+        public static Declined Send { get; } = new Declined()
         {
-            RequestedDirection = PacketTransferDirection.Outgoing,
+            RequestedAction = PacketTransferAction.Send,
         };
 
-        public static Failure For(PacketTransferDirection direction)
+        public static Declined For(PacketTransferAction action)
         {
-            switch (direction)
+            switch (action)
             {
-                case PacketTransferDirection.Incoming:
-                    return Incoming;
-                case PacketTransferDirection.Outgoing:
-                    return Outgoing;
+                case PacketTransferAction.Receive:
+                    return Receive;
+                case PacketTransferAction.Send:
+                    return Send;
             }
 
-            return new Failure()
+            return new Declined()
             {
-                RequestedDirection = direction,
+                RequestedAction = action,
             };
         }
 
-        public PacketTransferDirection RequestedDirection { get; set; }
+        public PacketTransferAction RequestedAction { get; set; }
     }
 
     public sealed class NoTransferRequested : TransferResult

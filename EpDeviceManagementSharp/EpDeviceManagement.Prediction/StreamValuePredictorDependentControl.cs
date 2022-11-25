@@ -1,5 +1,4 @@
 ﻿using EpDeviceManagement.Contracts;
-using EpDeviceManagement.Control.Extensions;
 using EpDeviceManagement.UnitsExtensions;
 
 using UnitsNet;
@@ -28,7 +27,6 @@ public class StreamValuePredictorDependentControl : IEpDeviceController
     public bool RequestsOutgoingPackets => this.strategy.RequestsOutgoingPackets;
 
     public ControlDecision DoControl(
-        int dataPoint,
         TimeSpan timeStep,
         ILoad load,
         IGenerator generator,
@@ -39,7 +37,6 @@ public class StreamValuePredictorDependentControl : IEpDeviceController
         this.loadsPredictor.ReportCurrentValue(currentLoad);
         this.generationPredictor.ReportCurrentValue(currentGeneration);
         return this.strategy.DoControl(
-            dataPoint,
             timeStep,
             load,
             generator,

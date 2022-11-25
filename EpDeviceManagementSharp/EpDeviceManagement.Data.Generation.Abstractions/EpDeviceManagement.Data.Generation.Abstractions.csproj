@@ -1,8 +1,18 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
     <LangVersion>latest</LangVersion>
+    <Configurations>Debug;Release;Release_Experimental</Configurations>
   </PropertyGroup>
+    
+    <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+        <DefineConstants>$(DefineConstants)TRACE;EXPERIMENTAL</DefineConstants>
+    </PropertyGroup>
+
+    <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release_Experimental|AnyCPU'">
+        <DefineConstants>$(DefineConstants)TRACE;RELEASE;EXPERIMENTAL</DefineConstants>
+        <Optimize>True</Optimize>
+    </PropertyGroup>
 
 </Project>

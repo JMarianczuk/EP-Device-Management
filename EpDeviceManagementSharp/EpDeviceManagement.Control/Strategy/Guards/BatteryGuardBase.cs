@@ -1,5 +1,4 @@
 ﻿using EpDeviceManagement.Contracts;
-using EpDeviceManagement.Control.Extensions;
 using EpDeviceManagement.UnitsExtensions;
 using UnitsNet;
 

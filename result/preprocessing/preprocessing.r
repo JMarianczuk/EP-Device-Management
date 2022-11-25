@@ -42,13 +42,15 @@ insert_preprocessed_view_name <- function(con, view_name) {
 
 drop_preprocessed_tables <- function(con, filter = "") {
     where <- get_where(and = filter)
-    where
+    cat(paste0("Dropping preprocessed ", where, "\n"))
+
     preprocessed_table_names <- dbGetQuery(con, paste("SELECT * FROM PreprocessedTables", where))
     for (table_name in preprocessed_table_names[,1]) {
         query <- paste("DROP TABLE IF EXISTS", table_name, ";")
         res <- dbExecute(con, query)
     }
     res <- dbExecute(con, paste("DELETE FROM PreprocessedTables", where))
+
     preprocessed_view_names <- dbGetQuery(con, paste("SELECT * FROM PreprocessedViews", where))
     for (view_name in preprocessed_view_names[,1]) {
         query <- paste("DROP VIEW IF EXISTS", view_name, ";")

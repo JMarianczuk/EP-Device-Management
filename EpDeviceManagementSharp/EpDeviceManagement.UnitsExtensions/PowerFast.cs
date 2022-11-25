@@ -22,6 +22,11 @@ public struct PowerFast
 
     public double Kilowatts => this.watts / wattsInAKilowatt;
 
+    public override string ToString()
+    {
+        return $"{this.Kilowatts} kW";
+    }
+
     public static PowerFast operator +(PowerFast left, PowerFast right)
         => new(left.watts + right.watts);
 

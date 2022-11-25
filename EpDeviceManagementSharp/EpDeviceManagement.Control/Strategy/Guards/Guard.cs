@@ -11,12 +11,12 @@ public class DummyGuard : IControlGuard
 
     }
 
-    public bool CanRequestIncoming(TimeSpan timeStep, ILoad load, IGenerator generator)
+    public bool CanRequestToReceive(TimeSpan timeStep, ILoad load, IGenerator generator)
     {
         return true;
     }
 
-    public bool CanRequestOutgoing(TimeSpan timeStep, ILoad load, IGenerator generator)
+    public bool CanRequestToSend(TimeSpan timeStep, ILoad load, IGenerator generator)
     {
         return true;
     }

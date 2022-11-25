@@ -2,6 +2,7 @@ library(RSQLite)
 
 source("preprocessing/preprocessing.r")
 source("preprocessing/successful_counts.r")
+source("preprocessing/distinct_values.r")
 
 source("r_helpers/sql_helpers.r")
 
@@ -27,7 +28,7 @@ get_energy_count_query <- function(
             paste(select_by, collapse = ","),
             "avg(energy_kwh_in) as avg_energy_in",
             "avg(energy_kwh_out) as avg_energy_out",
-            "avg(generationMissed_kwh) as avg_gen_missed",
+            "avg(generationMissed_kwh) as avg_curtailed_energy",
             "avg(energy_kwh_in + generationMissed_kwh) as avg_sum",
             "avg(incomingPowerGuards) as avg_powerGuard_in",
             "avg(outgoingPowerGuards) as avg_powerGuard_out",
@@ -102,6 +103,7 @@ get_total_count_query <- function(
     select_by,
     table_name,
     select_table_name,
+    fails,
     filter) {
     query <- paste(
         "CREATE TABLE IF NOT EXISTS",
@@ -111,6 +113,7 @@ get_total_count_query <- function(
         paste(
             paste(select_by, collapse = ","),
             "count(*) as totalCount",
+            paste("sum(", fails, ") as", fails, collapse = ","),
             sep = ","),
         "FROM",
         select_table_name,
@@ -133,11 +136,14 @@ preprocess_total_counts <- function(
     if (filter != "") {
         where <- append_where(where, filter)
     }
+    create_simulation_with_fail_type(con)
+    fails <- dbGetQuery(con, "select fail from distinct_fail")[,1]
     query <- get_total_count_query(
         by,
         select_by,
         table_name,
-        "simulation s",
+        "simulation_with_fail_type s",
+        fails,
         where)
     res <- dbExecute(con, query)
     res <- insert_preprocessed_table_name(con, table_name)

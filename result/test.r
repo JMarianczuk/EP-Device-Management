@@ -52,6 +52,7 @@ con <- create_db_connection()
 #
 # texts <- c("hi", "there", "hello there general kenobi")
 # get_where(quote_values = FALSE, data = "hello there")
-#
-# drop_preprocessed_tables(con, filter = "TableName like 'successful_counts_%'")
-reset_top_ten(con)
+
+drop_preprocessed_tables(con, filter = "TableName like '%total_count%'")
+# drop_preprocessed_tables(con, filter = "TableName like 'total_count_upper%'")
+# reset_top_ten(con)

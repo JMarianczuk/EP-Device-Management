@@ -24,13 +24,30 @@ showtext_auto()
 
 con <- create_db_connection()
 
+cat("preprocessing successful counts ")
 preprocess_successful_counts(c("strategy", "configuration"), "sc", con)
+cat("sc")
 preprocess_successful_counts(c("strategy", "configuration", "data"), "scd", con)
+cat("-scd")
 preprocess_successful_counts(c("strategy", "configuration", "data", "battery"), "scdb", con)
+cat("-scdb")
 preprocess_successful_counts(c("strategy", "guardConfiguration", "data", "battery"), "sgdb", con)
+cat("-sgdb")
 preprocess_successful_counts(c("strategy", "configuration", "data", "timeStep"), "scdt", con)
+cat("-scdt")
 preprocess_successful_counts(c("strategy", "configuration", "data", "battery", "timeStep"), "scdbt", con)
+cat("-scdbt")
 preprocess_successful_counts(c("strategy", "guardConfiguration", "data", "battery", "timeStep"), "sgdbt", con)
+cat("-sgdbt")
+preprocess_successful_counts(c("configuration", "battery", "timeStep"), "cbt", con, filter = "where strategy not like '%NoSend'")
+cat("-cbt")
+preprocess_successful_counts(c("configuration", "data", "battery", "timeStep"), "cdbt", con, filter = "where strategy not like '%NoSend'")
+cat("-cdbt")
+preprocess_successful_counts(c("guardConfiguration", "battery", "timeStep"), "gbt", con, filter = "where strategy not like '%NoSend'")
+cat("-gbt")
+preprocess_successful_counts(c("guardConfiguration", "data", "battery", "timeStep"), "gdbt", con, filter = "where strategy not like '%NoSend'")
+cat("-gdbt")
+cat("\n")
 
 preprocess_energy_stats(con)
 preprocess_distinct(con)
@@ -112,15 +129,15 @@ get_min_query_ <- function(where, table) {
 
 with_without_switch <- function(data) {
     res <- ""
-    if (endsWith(data, "noSolar")) {
-        res <- substring(data, 1, 4)
+    if (endsWith(data, "L")) {
+        res <- paste0(data, "G")
     } else {
-        res <- paste(data, "noSolar")
+        res <- substring(data, 1, 3)
     }
     res
 }
 
-top_two_strategies <- c("Probabilistic Range Control + Direction + Estimation", "Probabilistic Range Control + Direction + Estimation + NoOutgoing")
+top_two_strategies <- c("PRC + DIR + EST", "PEM Control")
 
 get_strategy_top_two <- function(strategy_name) {
     if (strategy_name == "") {
@@ -145,9 +162,9 @@ get_max_query <- function(data_name = "", battery_name = "", strat_name = "", ti
     inner_where <- get_where(
         quote_values = FALSE,
         success = "outer_query.success",
-        strategy = "outer_query.strategy",
-        battery = "outer_query.battery",
-        timeStep = "outer_query.timeStep",
+        strategy = if (strat_name != "") "outer_query.strategy" else "",
+        battery = if (battery_name != "") "outer_query.battery" else "",
+        timeStep = if (timestep_name != "") "outer_query.timeStep" else "",
         topTen = 1)
     table <- paste0("energy_", get_short(strat_name, data_name, battery_name, timestep_name, config_type = config_type), "_stat outer_query")
     combine_where <- function(where, inner_where) {
@@ -224,7 +241,8 @@ do_plot_int <- function(
     file_name,
     filter = "",
     filter_name = "") {
-    res <- dbGetQuery(con, get_query(data_name, battery_name, strat_name, timestep_name, config_type = y_name, filter = filter))
+    query <- get_query(data_name, battery_name, strat_name, timestep_name, config_type = y_name, filter = filter)
+    res <- dbGetQuery(con, query)
     if (nrow(res) == 0) {
         return()
     }
@@ -236,8 +254,9 @@ do_plot_int <- function(
     #         filter_name,
     #         sep = " and "))
 
-    query <- get_max_query(data_name, battery_name, strat_name, timestep_name, config_type = y_name, filter = filter)
-    max_energy <- dbGetQuery(con, query)[1, 1]
+    max_query <- get_max_query(data_name, battery_name, strat_name, timestep_name, config_type = y_name, filter = filter)
+    # max_energy <- dbGetQuery(con, max_query)[1, 1]
+    max_energy <- max(res$energy_kwh_in)
     min_energy <- dbGetQuery(con, get_min_query(data_name, battery_name))[1, 1]
     min_energy_2 <- dbGetQuery(con, get_min_query(data_name, "No Battery"))[1, 1]
     min_energy_3 <- dbGetQuery(con, get_min_query(with_without_switch(data_name), battery_name))[1, 1]
@@ -249,7 +268,7 @@ do_plot_int <- function(
         config_type = y_name,
         filter = filter)
     strat_with_direction <- if (str_contains(strat_name, "Direction")) TRUE else FALSE
-    data_has_solar <- !str_ends(data_name, "noSolar")
+    data_has_solar <- data_name != "" && !str_ends(data_name, "L")
     draw_second_vertical_line <- data_has_solar
     min_energy_breaks <- if (draw_second_vertical_line) {
         if (!is.na(min_energy_3)) {
@@ -271,7 +290,12 @@ do_plot_int <- function(
         res,
         aes(
             x = energy_kwh_in,
-            y = reorder(paste(pad_left(.data[[y_name]], data = "[0.7, 1.0] (0.04)"), "x", format_percent(count / this_number_of_combinations)), -ordering)
+            y = reorder(
+                paste(
+                    pad_left(.data[[y_name]], data = "[0.7, 1.0] (0.04)"),
+                    "x",
+                    format_percent(count / totalCount)),
+                -ordering)
         )) +
         geom_boxplot() +
         expand_limits(x = c(0, expand_right(max_energy))) +
@@ -285,7 +309,7 @@ do_plot_int <- function(
             #     filter_name,
             #     sep = "\n"),
             x = "Total received energy [kWh]",
-            y = "Configuration x Successful share") +
+            y = "Configuration x Success Rate") +
         theme(
             # plot.title = element_text(hjust = 0.5),
             # plot.title.position = "plot",
@@ -302,19 +326,20 @@ do_plot_int <- function(
     }
     ggsave(file_name, thisplot, width = 25, height = get_plot_height(number_of_configurations), units = "cm")
 
-    if (data_has_solar) {
-        max_energy <- dbGetQuery(
-            con,
-            get_max_query(data_name, battery_name, strat_name, timestep_name, config_type = y_name, filter = filter, value = "maximum_missed + maximum_in")
-        )[1,1] - min_energy
+    if (data_has_solar || data_name == "") {
+        # max_energy <- dbGetQuery(
+        #     con,
+        #     get_max_query(data_name, battery_name, strat_name, timestep_name, config_type = y_name, filter = filter, value = "maximum_missed + maximum_in")
+        # )[1,1] - min_energy
+        max_energy <- max(res$energy_kwh_in + res$generationMissed_kwh - res$min_incoming)
         otherplot <- ggplot(
             res,
             aes(
                 x = energy_kwh_in + generationMissed_kwh - min_incoming,
-                y = reorder(paste(pad_left(.data[[y_name]], data = "[0.7, 1.0] (0.04)"), "x", format_percent(count / this_number_of_combinations)), -ordering)
+                y = reorder(paste(pad_left(.data[[y_name]], data = "[0.7, 1.0] (0.04)"), "x", format_percent(count / totalCount)), -ordering)
             )) +
             geom_boxplot() +
-            geom_point(aes(x = mean(energy_kwh_in + generationMissed_kwh - min_incoming))) +
+            # geom_point(aes(x = mean(energy_kwh_in + generationMissed_kwh - min_incoming))) +
             expand_limits(x = c(0, expand_right(max_energy))) +
             scale_x_continuous(expand = c(0, 0)) +
             # scale_x_continuous(limits = c(0, max_energy)) +
@@ -339,51 +364,14 @@ do_plot_int <- function(
 do_plot <- function(data_name, battery_name, strat_name, timestep_name, title, file_name) {
     do_plot_int(data_name, battery_name, strat_name, timestep_name, "configuration", title, file_name)
     do_plot_int(data_name, battery_name, strat_name, timestep_name, "guardConfiguration", title, str_replace(file_name, "\\.", "_guardConfig."))
-
 }
 
-# do_plot2 <- function(data_name, strat_name, title, file_name) {
-#     res <- dbGetQuery(con, get_query(data_name, strat_name))
-#     max_energy <- dbGetQuery(con, get_max_query(data_name, strat_name))
-#     number_of_configurations <- get_number_of_configurations(strat_name)
-
-#     thisplot <- ggplot(res, aes(
-#         x = energy_kwh_in,
-#         y = reorder(paste(configuration, "x", count), count)
-#     )) +
-#     geom_boxplot() +
-#     scale_x_continuous(limits = c(0, max_energy[1, 1])) +
-#     labs(
-#         title = "total energy transferred",
-#         x = "Total energy exchanged [kWh]",
-#         y = "Configuration x Successful passes")
-
-#     ggsave(file_name, thisplot, width = 25, height = get_plot_height(number_of_combinations), units = "cm")
-# }
-
-# do_plot3 <- function(strat_name, title, file_name) {
-#     res <- dbGetQuery(con, get_query(strat_name = strat_name))
-#     max_energy <- dbGetQuery(con, get_max_query(strat_name = strat_name))[1, 1]
-#     ncomb <- number_of_combinations * length(data_configurations)
-#     number_of_configurations <- get_number_of_configurations(strat_name)
-#
-#     thisplot <- ggplot(res, aes(
-#         x = energy_kwh_in,
-#         y = reorder(paste(configuration, "x", format_percent(count / ncomb)), -ordering)
-#     )) +
-#     geom_boxplot() +
-#     scale_x_continuous(
-#         limits = c(0, max_energy)) +
-#     labs(
-#         title = "Required energy for each configuration with descending number of successful control passes",
-#         x = "Total energy received [kWh]",
-#         y = "Configuration x successful share")
-#
-#     ggsave(file_name, thisplot, width = 25, height = get_plot_height(number_of_configurations), units = "cm")
-# }
+do_plot_guards <- function(data_name, battery_name, timestep_name, title, file_name, filter = "") {
+    do_plot_int(data_name, battery_name, strat_name = "", timestep_name, "guardConfiguration", title, file_name, filter = filter)
+}
 
 exists_successful_ <- function(where) {
-    query <- paste("select count(*) as num from simulation", where)
+    query <- paste("select exists(select 1 from simulation", where, ")")
     res <- dbGetQuery(con, query)
     number <- res[1, 1]
     exists <- number != 0
@@ -400,43 +388,26 @@ exists_successful <- function(data_name = "", battery_name = "", strat_name = ""
     exists_successful_(where)
 }
 
-for (strat_name in strategy_names) {
-    if (options$strategy != "" && options$strategy != strat_name) {
-        next
-    }
-    # if (exists_successful(strat_name = strat_name)) {
-    #     do_plot3(
-    #         strat_name,
-    #         paste(
-    #             "simulating",
-    #             strat_name),
-    #         paste0(
-    #             "plots/boxplot_",
-    #             normalize(strat_name),
-    #             ".pdf"))
-    # }
-    for (data_name in data_configurations) {
-        # battery_name <- "10 kWh [10 kW]"
-        for (battery_name in battery_configurations) {
-            for (timestep_name in time_steps) {
+
+for (battery_name in battery_configurations) {
+    for (timestep_name in time_steps) {
+        for (data_name in data_configurations) {
+            for (strat_name in strategy_names) {
+                if (options$strategy != "" && options$strategy != strat_name) {
+                    next
+                }
                 if (exists_successful(data_name, battery_name, strat_name, timestep_name)) {
                     do_plot(
                         data_name,
                         battery_name,
                         strat_name,
                         timestep_name,
-                        paste(
-                            "simulating",
-                            data_name,
-                            "with",
-                            strat_name,
-                            ".",
-                            timestep_name),
+                        paste("simulating", data_name, "with", strat_name, ".", timestep_name),
                         paste0(
                             "plots/boxplot_",
-                            normalize(data_name),
-                            "_",
                             normalize(battery_name),
+                            "_",
+                            normalize(data_name),
                             "_",
                             normalize(strat_name),
                             "-",
@@ -444,6 +415,40 @@ for (strat_name in strategy_names) {
                             ".pdf"))
                 }
             }
+            if (exists_successful(data_name = data_name, battery_name = battery_name, timestep_name = timestep_name)) {
+                do_plot_guards(
+                    data_name,
+                    battery_name,
+                    timestep_name,
+                    "",
+                    paste0(
+                        "plots/boxplot_",
+                        "guards_",
+                        normalize(battery_name),
+                        "_",
+                        normalize(data_name),
+                        "_",
+                        normalize(timestep_name),
+                        ".pdf"),
+                    filter = "strategy not like '%NoSend'")
+            }
+        }
+        if (exists_successful(battery_name = battery_name, timestep_name = timestep_name)) {
+            do_plot_guards(
+                "",
+                battery_name,
+                timestep_name,
+                "",
+                paste0(
+                    "plots/boxplot_",
+                    "guards_",
+                    normalize(battery_name),
+                    "_",
+                    normalize(timestep_name),
+                    ".pdf"),
+                filter = "strategy not like '%NoSend'")
         }
     }
 }
+
+dbDisconnect(con)

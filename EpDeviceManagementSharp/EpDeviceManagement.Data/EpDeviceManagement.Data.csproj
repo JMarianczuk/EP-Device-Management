@@ -4,7 +4,17 @@
     <TargetFramework>net6.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <Configurations>Debug;Release;Release_Experimental</Configurations>
   </PropertyGroup>
+    
+    <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+        <DefineConstants>$(DefineConstants)TRACE;EXPERIMENTAL</DefineConstants>
+    </PropertyGroup>
+
+    <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release_Experimental|AnyCPU'">
+        <DefineConstants>$(DefineConstants)TRACE;RELEASE;EXPERIMENTAL</DefineConstants>
+        <Optimize>True</Optimize>
+    </PropertyGroup>
 
   <ItemGroup>
     <None Include="EnergyDataSetGenerator.generated.cs">
@@ -41,6 +51,9 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Update="household_data_1min_power.csv">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="household_data_1min_power_reduced.csv">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Update="household_data_1min_singleindex.csv">

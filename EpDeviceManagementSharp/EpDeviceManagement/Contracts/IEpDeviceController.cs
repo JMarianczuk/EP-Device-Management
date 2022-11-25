@@ -18,7 +18,6 @@ public interface IEpDeviceController
      * or the controller makes the decisions itself
      */
     ControlDecision DoControl(
-        int dataPoint,
         TimeSpan timeStep,
         ILoad load,
         IGenerator generator,

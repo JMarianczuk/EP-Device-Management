@@ -12,23 +12,38 @@ using LpSolveDotNet;
 using Stateless.Graph;
 using UnitsNet;
 
-CultureInfo.CurrentUICulture = CultureInfo.InvariantCulture;
+namespace EpDeviceManagement.Windows;
 
-var simulator = new Simulator();
-//await simulator.AnalyzeAsync();
-try
+internal class Program
 {
-    await simulator.SimulateAsync();
-}
-catch (Exception e)
-{
-    if (Debugger.IsAttached)
+    public static async Task Main(string[] args)
     {
-        Debugger.Break();
-    }
-    else
-    {
-        Console.WriteLine(e);
-        Console.WriteLine(e.StackTrace);
+        CultureInfo.CurrentUICulture = CultureInfo.InvariantCulture;
+
+        //var start = new DateTimeOffset(2015, 12, 11, 10, 00, 00, TimeSpan.FromHours(1));
+        //var timeStep = TimeSpan.FromMinutes(5);
+        //var steps = 90352;
+        //var fail_time = start + steps * timeStep;
+        //Console.WriteLine(fail_time);
+        //return;
+
+        var simulator = new Simulator();
+        //await simulator.AnalyzeAsync();
+        try
+        {
+            await simulator.SimulateAsync();
+        }
+        catch (Exception e)
+        {
+            if (Debugger.IsAttached)
+            {
+                Debugger.Break();
+            }
+            else
+            {
+                Console.WriteLine(e);
+                Console.WriteLine(e.StackTrace);
+            }
+        }
     }
 }

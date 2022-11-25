@@ -4,10 +4,12 @@
 
 enhanced.json
 *.sqlite
+*.sqlite-journal
 result/results*.txt
 result/plots/*.pdf
 result/dataplots/*.pdf
 result/*.pdf
+result-experimental/*
 graphs/*.pdf
 EpDeviceManagementSharp/EpDeviceManagement.Data/*.csv
 

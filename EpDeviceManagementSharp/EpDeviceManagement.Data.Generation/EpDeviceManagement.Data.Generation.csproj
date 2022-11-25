@@ -5,7 +5,17 @@
     <IncludeBuildOutput>false</IncludeBuildOutput>
     <!--<Nullable>enable</Nullable>-->
     <LangVersion>latest</LangVersion>
+    <Configurations>Debug;Release;Release_Experimental</Configurations>
   </PropertyGroup>
+    
+    <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+        <DefineConstants>$(DefineConstants)TRACE;EXPERIMENTAL</DefineConstants>
+    </PropertyGroup>
+
+    <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release_Experimental|AnyCPU'">
+        <DefineConstants>$(DefineConstants)TRACE;RELEASE;EXPERIMENTAL</DefineConstants>
+        <Optimize>True</Optimize>
+    </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="AvantiPoint.CodeGenHelpers" Version="1.6.20">

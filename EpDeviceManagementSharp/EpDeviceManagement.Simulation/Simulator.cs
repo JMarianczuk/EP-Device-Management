@@ -43,7 +43,6 @@ namespace EpDeviceManagement.Simulation
             //var timestepCombinations = shortTimestep.Concat(longTimestep).ToList();
             var timestepCombinations = longTimestep.ToList();
 
-
             IList<DataSet> dataSets;
             using (var progress = new ConsoleProgressBar())
             {
@@ -70,6 +69,7 @@ namespace EpDeviceManagement.Simulation
                     })
                     .ToList();
             }
+            Console.WriteLine("");
 
             var allCombinations =
                 dataSets
@@ -93,7 +93,7 @@ namespace EpDeviceManagement.Simulation
                     "RESULT",
                     $"strategy={simulationResult.StrategyName}",
                     $"configuration={simulationResult.StrategyConfiguration}",
-                    $"prettyConfiguration={simulationResult.StrategyPrettyConfiguration}",
+                    //$"prettyConfiguration={simulationResult.StrategyPrettyConfiguration}",
                     $"data={simulationResult.DataConfiguration}",
                     $"guardConfiguration={simulationResult.GuardConfiguration}",
                     $"battery={simulationResult.BatteryConfiguration}",
@@ -190,7 +190,7 @@ namespace EpDeviceManagement.Simulation
                 allCombinations,
                 new ParallelOptions()
                 {
-                    MaxDegreeOfParallelism = 12,
+                    MaxDegreeOfParallelism = 10,
                 },
                 combination =>
                 {
@@ -234,26 +234,11 @@ namespace EpDeviceManagement.Simulation
         {
             if (initialReducedPower > generatorPower)
             {
-                if (generatorPower >= chargePower)
-                {
-                    // reduced power was larger than the current generation due to the full battery buffer
-                    // but there is some load, match that load with the generation exactly
-                    // and since generator.CurrentGeneration >= chargePower by reducing by chargePower we are still within the rules
-                    return PowerFast.Zero;
-                }
-                else
-                {
-                    // charge power is larger than the generation, try our luck without the generation
-                    var withoutGeneration = chargePower - generatorPower;
-                    return withoutGeneration;
-                }
+                // charge power is larger than the generation, try our luck without the generation
+                var withoutGeneration = chargePower - generatorPower;
+                return withoutGeneration;
             }
-            else if (initialReducedPower > chargePower)
-            {
-                // no need to discharge the battery, match the load with the generation exactly
-                return PowerFast.Zero;
-            }
-            else
+            else // happens most of the time
             {
                 // the new charge power may be slightly too large due to number inaccuracy.
                 // Decrease it slightly in favor of not being able to track at the absolute maximum of the battery anyways
@@ -276,7 +261,7 @@ namespace EpDeviceManagement.Simulation
             if (newSoC >= battery.TotalCapacity)
             {
                 var difference = newSoC - battery.TotalCapacity;
-                var reducedPower = (difference / timeStep) / (battery.ChargingEfficiency);
+                var reducedPower = difference / (timeStep * battery.ChargingEfficiency);
                 var newChargePower = GetNewChargePower(reducedPower, chargePower, generation);
                 forfeited += (chargePower - newChargePower) * timeStep;
                 battery.Simulate(timeStep, newChargePower, PowerFast.Zero);
@@ -345,6 +330,7 @@ namespace EpDeviceManagement.Simulation
                 };
 
                 int step = 0;
+                int batteryStep = 0;
                 var result = new SimulationResult()
                 {
                     PacketProbability = packetProbability,
@@ -352,7 +338,7 @@ namespace EpDeviceManagement.Simulation
                     TimeStep = timeStep,
                     StrategyName = strategy.Name,
                     StrategyConfiguration = strategy.Configuration,
-                    StrategyPrettyConfiguration = strategy.PrettyConfiguration,
+                    //StrategyPrettyConfiguration = strategy.PrettyConfiguration,
                     DataConfiguration = dataSet.Configuration,
                     GuardConfiguration = strategy is GuardedStrategyWrapper wrapper ? wrapper.GuardConfiguration : string.Empty,
                     BatteryConfiguration = $"{batteryConfig.Description}",
@@ -360,7 +346,7 @@ namespace EpDeviceManagement.Simulation
                 };
                 EnergyFast totalEnergyIn = EnergyFast.Zero;
                 EnergyFast totalEnergyOut = EnergyFast.Zero;
-                EnergyFast totalForfeitedEnergy = EnergyFast.Zero;
+                EnergyFast totalCurtailedEnergy = EnergyFast.Zero;
                 var batteryMinSoC = battery.CurrentStateOfCharge;
                 var batteryMaxSoC = battery.CurrentStateOfCharge;
                 var batterySoCSum = battery.CurrentStateOfCharge;
@@ -370,11 +356,11 @@ namespace EpDeviceManagement.Simulation
                     result.StepsSimulated = step;
                     result.TotalKilowattHoursIncoming = totalEnergyIn.KilowattHours;
                     result.TotalKilowattHoursOutgoing = totalEnergyOut.KilowattHours;
-                    result.TotalKilowattHoursForfeited = totalForfeitedEnergy.KilowattHours;
+                    result.TotalKilowattHoursForfeited = totalCurtailedEnergy.KilowattHours;
                     result.BatteryMinSoC = batteryMinSoC;
                     result.BatteryMaxSoC = batteryMaxSoC;
-                    result.BatteryAvgSoC = step != 0
-                        ? batterySoCSum / step
+                    result.BatteryAvgSoC = batteryStep != 0
+                        ? batterySoCSum / batteryStep
                         : battery.CurrentStateOfCharge;
                     if (strategy is GuardedStrategy guarded)
                     {
@@ -387,7 +373,7 @@ namespace EpDeviceManagement.Simulation
                     }
                 }
 
-                int dataPoint = 0;
+                PowerFast packetPowerAmount = packetSize / timeStep;
                 var packetProbabilityDecimalFractions = packetProbability.DecimalFractions;
                 foreach (var batch in dataSet.Data)
                 {
@@ -397,7 +383,7 @@ namespace EpDeviceManagement.Simulation
                     ControlDecision decision;
                     try
                     {
-                        decision = strategy.DoControl(dataPoint, timeStep, load, generator, lastDecision);
+                        decision = strategy.DoControl(timeStep, load, generator, lastDecision);
                     }
                     catch (Exception e)
                     {
@@ -406,7 +392,7 @@ namespace EpDeviceManagement.Simulation
                         result.FailReason = BatteryFailReason.Exception;
                         return result;
                     }
-                    EnergyFast packet = EnergyFast.Zero;
+                    PowerFast packetPower = PowerFast.Zero;
                     // always do the same random calculation, no matter the decision of the algorithm
                     // this provides the same environmental conditions, e.g. any algorithm that requests
                     // an incoming transfer in step 325 will get the same result.
@@ -416,51 +402,40 @@ namespace EpDeviceManagement.Simulation
                         random.NextDouble() <= packetProbabilityDecimalFractions);
                     if (decision is ControlDecision.RequestTransfer rt)
                     {
-                        if (rt.RequestedDirection == PacketTransferDirection.Outgoing)
+                        if (rt.RequestedAction == PacketTransferAction.Send)
                         {
                             if (allowOutgoing)
                             {
-                                packet = packetSize;
+                                packetPower = packetPowerAmount;
                                 totalEnergyOut += packetSize;
-                                lastDecision = TransferResult.Success.Outgoing;
+                                lastDecision = TransferResult.Granted.Send;
                             }
                             else
                             {
-                                lastDecision = TransferResult.Failure.Outgoing;
+                                lastDecision = TransferResult.Declined.Send;
                             }
                         }
-                        else if (rt.RequestedDirection == PacketTransferDirection.Incoming)
+                        else if (rt.RequestedAction == PacketTransferAction.Receive)
                         {
                             if (allowIncoming)
                             {
-                                packet = -packetSize;
+                                packetPower = -packetPowerAmount;
                                 totalEnergyIn += packetSize;
-                                lastDecision = TransferResult.Success.Incoming;
+                                lastDecision = TransferResult.Granted.Receive;
                             }
                             else
                             {
-                                lastDecision = TransferResult.Failure.Incoming;
+                                lastDecision = TransferResult.Declined.Receive;
                             }
                         }
                     }
                     else
                     {
-                        packet = EnergyFast.Zero;
                         lastDecision = TransferResult.NoTransferRequested.Instance;
                     }
-
-                    var packetPower = packet / timeStep;
-                    //var averageBatchLoad = batch.Average(dataSet.GetLoad);
-                    //var averageBatchGeneration = batch.Average(dataSet.GetGeneration);
+                    
                     foreach (var entry in batch)
                     {
-                        //var dischargePower = loads[0].CurrentDemand
-                        //                     - generators[0].CurrentGeneration
-                        //                     + packetPower;
-                        //var generation = dataSet.GetGeneration(entry);
-                        //var dischargePower = dataSet.GetLoad(entry)
-                        //                     - generation
-                        //                     + packetPower;
                         var generation = dataSet.GetGeneration(entry);
                         var dischargePower = dataSet.GetLoad(entry)
                                              - generation
@@ -492,7 +467,7 @@ namespace EpDeviceManagement.Simulation
                                 {
                                     var reducedChargePower = battery.MaximumChargePower;
                                     var missed = chargePower - reducedChargePower;
-                                    totalForfeitedEnergy += missed * dataTimeStep;
+                                    totalCurtailedEnergy += missed * dataTimeStep;
                                     chargePower = reducedChargePower;
                                     generation -= missed;
                                 }
@@ -504,34 +479,33 @@ namespace EpDeviceManagement.Simulation
                             }
                             else
                             {
-                                DoBatteryChargingWithPvMppTracking(battery, generation, dataTimeStep, chargePower, ref totalForfeitedEnergy);
+                                DoBatteryChargingWithPvMppTracking(battery, generation, dataTimeStep, chargePower, ref totalCurtailedEnergy);
+                            }
+
+                            batteryMinSoC = Units.Min(batteryMinSoC, battery.CurrentStateOfCharge);
+                            batteryMaxSoC = Units.Max(batteryMaxSoC, battery.CurrentStateOfCharge);
+                            batterySoCSum += battery.CurrentStateOfCharge;
+                            batteryStep += 1;
+
+                            var belowZero = battery.CurrentStateOfCharge <= EnergyFast.Zero;
+                            var exceedCapacity = battery.CurrentStateOfCharge >= battery.TotalCapacity;
+                            if (belowZero || exceedCapacity)
+                            {
+                                SetResultValues();
+                                result.Success = false;
+                                if (belowZero)
+                                {
+                                    result.FailReason = BatteryFailReason.BelowZero;
+                                }
+                                else if (exceedCapacity)
+                                {
+                                    result.FailReason = BatteryFailReason.ExceedCapacity;
+                                }
+                                return result;
                             }
                         }
                     }
                     step += 1;
-
-                    batteryMinSoC = Units.Min(batteryMinSoC, battery.CurrentStateOfCharge);
-                    batteryMaxSoC = Units.Max(batteryMaxSoC, battery.CurrentStateOfCharge);
-                    batterySoCSum += battery.CurrentStateOfCharge;
-
-                    var belowZero = battery.CurrentStateOfCharge <= EnergyFast.Zero;
-                    var exceedCapacity = battery.CurrentStateOfCharge >= battery.TotalCapacity;
-                    if (belowZero || exceedCapacity)
-                    {
-                        SetResultValues();
-                        result.Success = false;
-                        if (belowZero)
-                        {
-                            result.FailReason = BatteryFailReason.BelowZero;
-                        }
-                        else if (exceedCapacity)
-                        {
-                            result.FailReason = BatteryFailReason.ExceedCapacity;
-                        }
-                        return result;
-                    }
-
-                    dataPoint += 1;
                 }
 
                 SetResultValues();

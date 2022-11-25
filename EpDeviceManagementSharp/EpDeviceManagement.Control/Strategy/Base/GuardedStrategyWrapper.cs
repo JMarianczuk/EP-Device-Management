@@ -17,34 +17,37 @@ public class GuardedStrategyWrapper : IEpDeviceController
     {
         this.strategy = strategy;
         this.guards = guards;
-        this.guardSummary = new GuardSummaryImpl();
+        guardSummary = new GuardSummaryImpl();
 
-        this.GuardConfiguration = guards
+        var powerConfig = guards
             .OfType<BatteryPowerGuard>()
             .FirstOrDefault()?.Configuration ?? string.Empty;
+        var capacityConfig = guards
+            .OfType<BatteryCapacityGuard>()
+            .FirstOrDefault()?.Configuration ?? string.Empty;
+        GuardConfiguration = $"p({powerConfig}) c({capacityConfig})";
     }
 
     public ControlDecision DoControl(
-        int dataPoint,
         TimeSpan timeStep,
         ILoad load,
         IGenerator generator,
         TransferResult lastTransferResult)
     {
-        this.ReportLastTransfer(lastTransferResult);
-        var decision = this.strategy.DoControl(dataPoint, timeStep, load, generator, lastTransferResult);
+        ReportLastTransfer(lastTransferResult);
+        var decision = strategy.DoControl(timeStep, load, generator, lastTransferResult);
         if (decision is ControlDecision.RequestTransfer request)
         {
-            switch (request.RequestedDirection)
+            switch (request.RequestedAction)
             {
-                case PacketTransferDirection.Incoming:
-                    if (!this.CanRequestIncoming(timeStep, load, generator))
+                case PacketTransferAction.Receive:
+                    if (!CanRequestIncoming(timeStep, load, generator))
                     {
                         decision = ControlDecision.NoAction.Instance;
                     }
                     break;
-                case PacketTransferDirection.Outgoing:
-                    if (!this.CanRequestOutgoing(timeStep, load, generator))
+                case PacketTransferAction.Send:
+                    if (!CanRequestOutgoing(timeStep, load, generator))
                     {
                         decision = ControlDecision.NoAction.Instance;
                     }
@@ -60,9 +63,9 @@ public class GuardedStrategyWrapper : IEpDeviceController
         var result = true;
         foreach (var g in guards)
         {
-            if (!g.CanRequestIncoming(timeStep, load, generator))
+            if (!g.CanRequestToReceive(timeStep, load, generator))
             {
-                this.IncrementGuardCounter(g);
+                IncrementGuardCounter(g);
                 // do not return here just yet, we wish to capture all the guards, not primarily the ones with precedence
                 result = false;
             }
@@ -73,11 +76,11 @@ public class GuardedStrategyWrapper : IEpDeviceController
     private bool CanRequestOutgoing(TimeSpan timeStep, ILoad load, IGenerator generator)
     {
         var result = true;
-        foreach (var g in this.guards)
+        foreach (var g in guards)
         {
-            if (!g.CanRequestOutgoing(timeStep, load, generator))
+            if (!g.CanRequestToSend(timeStep, load, generator))
             {
-                this.IncrementGuardCounter(g);
+                IncrementGuardCounter(g);
                 result = false;
             }
         }
@@ -92,48 +95,48 @@ public class GuardedStrategyWrapper : IEpDeviceController
             case BatteryPowerGuard:
                 if (incoming)
                 {
-                    this.guardSummary.IncomingPowerGuards += 1;
+                    guardSummary.IncomingPowerGuards += 1;
                 }
                 else
                 {
-                    this.guardSummary.OutgoingPowerGuards += 1;
+                    guardSummary.OutgoingPowerGuards += 1;
                 }
                 break;
             case BatteryCapacityGuard:
                 if (incoming)
                 {
-                    this.guardSummary.FullCapacityGuards += 1;
+                    guardSummary.FullCapacityGuards += 1;
                 }
                 else
                 {
-                    this.guardSummary.EmptyCapacityGuards += 1;
+                    guardSummary.EmptyCapacityGuards += 1;
                 }
                 break;
             case OscillationGuard:
-                this.guardSummary.OscillationGuards += 1;
+                guardSummary.OscillationGuards += 1;
                 break;
         }
     }
 
     private void ReportLastTransfer(TransferResult lastTransferResult)
     {
-        foreach (var guard in this.guards)
+        foreach (var guard in guards)
         {
             guard.ReportLastTransfer(lastTransferResult);
         }
     }
 
-    public string Name => this.strategy.Name;
+    public string Name => strategy.Name;
 
-    public string Configuration => this.strategy.Configuration;
+    public string Configuration => strategy.Configuration;
 
-    public string PrettyConfiguration => this.strategy.PrettyConfiguration;
+    public string PrettyConfiguration => strategy.PrettyConfiguration;
 
-    public bool RequestsOutgoingPackets => this.strategy.RequestsOutgoingPackets;
+    public bool RequestsOutgoingPackets => strategy.RequestsOutgoingPackets;
 
     public string GuardConfiguration { get; }
 
-    public IGuardSummary GuardSummary => this.guardSummary;
+    public IGuardSummary GuardSummary => guardSummary;
 
     private class GuardSummaryImpl : IGuardSummary
     {

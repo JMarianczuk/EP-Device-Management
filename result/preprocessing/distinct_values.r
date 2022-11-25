@@ -48,8 +48,26 @@ preprocess_distinct <- function(con) {
         "packetSize",
         "probability",
         "battery",
-        "guardConfiguration")) {
+        "guardConfiguration",
+        "fail")) {
         preprocess_distinct_single(con, column)
     }
     preprocess_distinct_dual(con, "strategy", "configuration")
+}
+
+create_simulation_with_fail_type <- function(con) {
+    preprocess_distinct(con)
+    fails <- dbGetQuery(con, "select fail from distinct_fail")[,1]
+    query <- paste(
+        "CREATE VIEW IF NOT EXISTS",
+        "simulation_with_fail_type",
+        "AS",
+        "SELECT",
+        paste(
+            "*",
+            paste0("fail = '", fails, "' as ", fails, collapse = ","),
+            sep = ","),
+        "FROM",
+        "simulation")
+    res <- dbExecute(con, query)
 }

@@ -1,10 +1,20 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net6.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <Configurations>Debug;Release;Release_Experimental</Configurations>
   </PropertyGroup>
+    
+    <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+        <DefineConstants>$(DefineConstants)TRACE;EXPERIMENTAL</DefineConstants>
+    </PropertyGroup>
+
+    <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release_Experimental|AnyCPU'">
+        <DefineConstants>$(DefineConstants)TRACE;RELEASE;EXPERIMENTAL</DefineConstants>
+        <Optimize>True</Optimize>
+    </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="UnitsNet" Version="4.145.0" />

@@ -6,20 +6,20 @@ public sealed class OscillationGuard : IControlGuard
 {
     private TransferResult? lastTransfer;
 
-    public bool CanRequestIncoming(TimeSpan timeStep, ILoad load, IGenerator generator)
+    public bool CanRequestToReceive(TimeSpan timeStep, ILoad load, IGenerator generator)
     {
-        var sentPacketLastStep = lastTransfer is TransferResult.Success
+        var sentPacketLastStep = lastTransfer is TransferResult.Granted
         {
-            PerformedDirection: PacketTransferDirection.Outgoing
+            PerformedAction: PacketTransferAction.Send
         };
         return !sentPacketLastStep;
     }
 
-    public bool CanRequestOutgoing(TimeSpan timeStep, ILoad load, IGenerator generator)
+    public bool CanRequestToSend(TimeSpan timeStep, ILoad load, IGenerator generator)
     {
-        var receivedPacketLastStep = lastTransfer is TransferResult.Success
+        var receivedPacketLastStep = lastTransfer is TransferResult.Granted
         {
-            PerformedDirection: PacketTransferDirection.Incoming
+            PerformedAction: PacketTransferAction.Receive
         };
         return !receivedPacketLastStep;
     }

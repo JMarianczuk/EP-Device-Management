@@ -2,6 +2,7 @@ library(RSQLite)
 library(ggplot2)
 library(optparse)
 library(stringr)
+library(R.utils)
 
 option_list <- list(
     make_option("--legend", type = "logical", default = FALSE)
@@ -29,21 +30,23 @@ con <- create_db_connection()
 preprocess_distinct(con)
 
 data_names <- dbGetQuery(con, "select data from distinct_data")[,1]
-battery_names <- dbGetQuery(con, "select battery from distinct_battery")[,1]#"10 kWh [10 kW]"
+battery_names <- dbGetQuery(con, "select battery from distinct_battery")[,1]
+fails <- dbGetQuery(con, "select fail from distinct_fail")[,1]
 
-energy_in_name <-       "avg received energy [kWh]"
-energy_out_name <-      "avg sent energy [kWh]"
-energy_missed_name <-   "avg forfeited energy [kWh]"
-wasted_name <-          "avg wasted energy [kWh]"
-count_name <-           "share of successful passes"
-# power_in_name <-        "avg power guards (in)"
-# power_out_name <-       "avg power guards (out)"
-# capacity_empty_name <-  "avg capacity guards (out)"
-# capacity_full_name <-   "avg capacity guards (in)"
-oscillation_name <-     "avg oscillation guards"
-battery_min_name <-     "avg min battery SoC [kWh]"
-battery_max_name <-     "avg max battery SoC [kWh]"
-battery_avg_name <-     "avg battery SoC [kWh]"
+energy_in_name <-       "received\nenergy\n[kWh]"
+energy_out_name <-      "sent\nenergy\n[kWh]"
+energy_curtailed_name <- "curtailed\nenergy\n[kWh]"
+wasted_name <-          "wasted\nenergy\n[kWh]"
+count_name <-           "success\nrate"
+power_in_name <-        "receive\npower\nguards"
+power_out_name <-       "send\npower\nguards"
+# capacity_empty_name <-  "capacity guards (out)"
+# capacity_full_name <-   "capacity guards (in)"
+# oscillation_name <-     "oscillation guards"
+discharge_power_fail_name <- "fail rate\ndischarge\npower\nexceeded"
+battery_min_name <-     "minimum\nSoC\n[kWh]"
+battery_max_name <-     "maximum\nSoC\n[kWh]"
+battery_avg_name <-     "average\nSoC\n[kWh]"
 
 get_min_energy <- function(data = "", battery = "") {
     query <- paste(
@@ -55,7 +58,7 @@ get_min_energy <- function(data = "", battery = "") {
     dbGetQuery(con, query)[1, 1]
 }
 
-get_query <- function(by, filter, reduce = FALSE, offset = 0) {
+get_query <- function(by, filter, reduce = FALSE, offset = 0, with_fails = FALSE) {
     query <- paste(
         "select",
         "*",
@@ -100,20 +103,34 @@ get_query <- function(by, filter, reduce = FALSE, offset = 0) {
             ")"),
         "where",
         paste0("succ.", by, "=", "total.", by, collapse = " and "))
+    fails_query <- function(fail_name, name) {
+        paste(
+            "select",
+            paste(
+                paste(by, collapse = ","),
+                paste("cast(", fail_name, "as REAL) / totalCount as value"),
+                paste0("'", name, "' as facet"),
+                sep = ","),
+            "from",
+            "(",
+            total_query,
+            ")")
+    }
     query <- paste_if(
         count_query,
         outer_query("avg_energy_in", energy_in_name),
         if (reduce) "" else outer_query("avg_energy_out", energy_out_name),
-        if (reduce) "" else outer_query("avg_gen_missed", energy_missed_name),
+        if (reduce) "" else outer_query("avg_curtailed_energy", energy_curtailed_name),
         if (reduce) "" else outer_query(paste("avg_sum - ", offset), wasted_name),
-        # outer_query("avg_powerGuard_in", power_in_name),
-        # outer_query("avg_powerGuard_out", power_out_name),
+        outer_query("avg_powerGuard_in", power_in_name),
+        if (reduce) "" else outer_query("avg_powerGuard_out", power_out_name),
         # outer_query("avg_capacityGuard_empty", capacity_empty_name),
         # outer_query("avg_capacityGuard_full", capacity_full_name),
-        if (reduce) "" else outer_query("avg_oscillationGuard", oscillation_name),
+        # if (reduce) "" else outer_query("avg_oscillationGuard", oscillation_name),
         outer_query("avg_min_battery", battery_min_name),
         outer_query("avg_max_battery", battery_max_name),
         outer_query("avg_avg_battery", battery_avg_name),
+        if (with_fails) fails_query("ExceedDischargePower", discharge_power_fail_name) else "",
         sep = " UNION "
     )
     query
@@ -143,39 +160,52 @@ do_plot <- function(
     filter_name = "",
     custom_colours = FALSE,
     custom_breaks = c(),
+    custom_minor_breaks = waiver(),
+    custom_expand_x = c(),
     reduce = FALSE,
-    offset = 0) {
-    res <- dbGetQuery(con, get_query(by = by, filter = filter, reduce = reduce, offset = offset))
+    offset = 0,
+    with_fails = FALSE) {
+    query <- get_query(by = by, filter = filter, reduce = reduce, offset = offset, with_fails = with_fails)
+    res <- dbGetQuery(con, query)
+    if (nrow(res) == 0) return()
     res$facet <- factor(
         res$facet,
         levels = c(
             count_name,
+            discharge_power_fail_name,
             energy_in_name,
             energy_out_name,
-            energy_missed_name,
+            energy_curtailed_name,
             wasted_name,
-            # power_in_name,
-            # power_out_name,
+            power_in_name,
+            power_out_name,
             # capacity_full_name,
             # capacity_empty_name,
-            oscillation_name,
+            # oscillation_name,
             battery_min_name,
             battery_max_name,
             battery_avg_name))
     thisplot <- ggplot(res, aesthetics) +
         geom_line() +
-        expand_limits(y = 0) +
+        (if (length(custom_expand_x) != 0)
+            expand_limits(x = custom_expand_x, y = 0)
+        else
+            expand_limits(y = 0))+
         facet_grid(rows = vars(facet), scales = "free_y", switch = "both") +
         labs(
             # title = paste_if(
             #     paste("success rate and average metrics for each", x_name, "and", group_name),
             #     filter_name,
             #     sep = "\n"),
-            x = x_title) +
+            x = x_title,
+            colour = capitalize(group_name)) +
         theme(
             # plot.title = element_text(hjust = 0.5),
             legend.position = "bottom",
-            axis.title.y = element_blank())
+            axis.title.y = element_blank(),
+            strip.text.y.left = element_text(angle=0),
+            strip.placement = "outside",
+            strip.background = element_rect())
 
     if (length(highlight_x) != 0) {
         thisplot <- thisplot +
@@ -193,15 +223,21 @@ do_plot <- function(
             #     labels = label_wrap_gen(width = 29)) +
             # theme(legend.key.size = unit(0.8, 'cm'))
             scale_colour_manual(
-                group,
-                values = group_values_colours)
+                capitalize(group_name),
+                values = group_values_colours) +
+            guides(colour = guide_legend(nrow = 3)) +
+            theme(
+                legend.margin = margin(l = -2.5, unit = "cm")
+            )
     }
     if (length(custom_breaks) != 0) {
         thisplot <- thisplot +
-            scale_x_continuous(breaks = custom_breaks)
+            scale_x_continuous(
+                breaks = custom_breaks,
+                minor_breaks = custom_minor_breaks)
     }
 
-    ggsave(filename, thisplot, width = 30, height = if (reduce) 25 else 40, units = "cm")
+    ggsave(filename, thisplot, width = 16, height = if (reduce) 15 else 22, units = "cm")
 }
 
 plot_pp <- function(
@@ -211,6 +247,9 @@ plot_pp <- function(
     x_title,
     x_name,
     highlight_x,
+    custom_breaks = c(),
+    custom_minor_breaks = waiver(),
+    custom_expand_x = c(),
     custom_colours = FALSE) {
     plot_int <- function(
         by,
@@ -239,6 +278,9 @@ plot_pp <- function(
               group,
               ".pdf"),
             h_x,
+            custom_breaks = custom_breaks,
+            custom_minor_breaks = custom_minor_breaks,
+            custom_expand_x = custom_expand_x,
             filter = where,
             filter_name = filter_name,
             custom_colours = custom_colours,
@@ -256,8 +298,8 @@ plot_pp <- function(
                 by,
                 c(b_name),
                 get_where(battery = b_name),
-                filter_name = paste("for the", b_name, "battery"),
-                h_x = head(highlight_x, -1))
+                filter_name = paste("for battery", b_name),
+                h_x = if (b_name == "A") highlight_x[1] else highlight_x[2])
         }
     }
     if (group != "data") {
@@ -269,7 +311,7 @@ plot_pp <- function(
                 c(d_name),
                 get_where(data = d_name),
                 filter_name = paste("for the", d_name, "data set"),
-                reduce = str_ends(d_name, "noSolar"),
+                reduce = str_ends(d_name, "L"),
                 offset = get_min_energy(data = d_name))
         }
     }
@@ -282,9 +324,9 @@ plot_pp <- function(
                     by,
                     c(b_name, d_name),
                     get_where(battery = b_name, data = d_name),
-                    filter_name = paste("for the", d_name, "data set and the", b_name, "battery"),
-                    h_x = head(highlight_x, -1),
-                    reduce = str_ends(d_name, "noSolar"),
+                    filter_name = paste("for the", d_name, "data set and battery", b_name),
+                    h_x = if (b_name == "A") highlight_x[1] else highlight_x[2],
+                    reduce = str_ends(d_name, "L"),
                     offset = get_min_energy(battery = b_name, data = d_name))
             }
         }
@@ -293,12 +335,12 @@ plot_pp <- function(
 
 plot_packetSize <- function(group, group_name, custom_colours = FALSE) {
     plot_pp("packetSize", group, group_name,"packet size [kWh]", "packet size",
-            c(3, 4) / 3, custom_colours = custom_colours)
+            c(3, 4) / 3, custom_breaks = seq(from = 0, to = 1.4, by = 0.1), custom_colours = custom_colours)
 }
 
 plot_probability <- function(group, group_name, custom_colours = FALSE) {
     plot_pp("probability", group, group_name,"probability", "probability",
-            c(), custom_colours = custom_colours)
+            c(), custom_breaks = seq(from = 0, to = 1, by = 0.1), custom_minor_breaks = seq(0, 1, 0.1), custom_expand_x = 0.1, custom_colours = custom_colours)
 }
 
 plot_by_range <- function(group, group_name, select, range_name, custom_colours = FALSE) {
@@ -392,28 +434,108 @@ plot_upper_range <- function(group, group_name, custom_colours = FALSE) {
     plot_by_range(
         group,
         group_name,
-        "cast(substr(configuration, 8, 3) as NUMERIC)",
+        "cast(substr(configuration, 7, 3) as NUMERIC)",
         "upper",
         custom_colours)
 }
 
+plot_power_guards_out <- function(group, group_name, custom_colours = FALSE) {
+    plot_int <- function(
+        by,
+        filtered = c(),
+        where = "",
+        filter_name = "",
+        offset = 0) {
+        do_plot(
+            by,
+            aes(
+                x = guardConfiguration,
+                y = value,
+                colour = .data[[group]],
+                group = .data[[group]]),
+            x_title = "Send Power Guard Safety Margin [kW]",
+            x_name = "send power guard configuration",
+            group_name = group_name,
+            paste0(
+                "plots/single_factor_",
+                "power_guard_send_",
+                if (length(filtered) == 0) "" else paste0(paste(filtered, collapse = "_"), "_"),
+                group,
+                ".pdf"),
+            filter = where,
+            filter_name = filter_name,
+            custom_colours = custom_colours,
+            custom_breaks = seq(0, 20, 1),
+            custom_minor_breaks = seq(0, 20, 1),
+            offset = offset,
+            with_fails = TRUE)
+    }
+    preprocess_counts_int <- function(by) {
+        select_by <- by
+        select_by[1] <- "cast(substr(guardConfiguration, 8, 3) as NUMERIC) as guardConfiguration"
+        preprocess_counts(by, select_by, filter = "length(guardConfiguration) > 18") #small config is 13 long, big one 23
+    }
+    by <- c("guardConfiguration", group)
+    preprocess_counts_int(by)
+    plot_int(by)
+    if (group != "battery") {
+        by <- c("guardConfiguration", "battery", group)
+        preprocess_counts_int(by)
+        for (b_name in battery_names) {
+            plot_int(by, c(b_name), get_where(battery = b_name), filter_name = paste("for the", b_name, "battery"))
+        }
+    }
+    if (group != "data") {
+        by <- c("guardConfiguration", "data", group)
+        preprocess_counts_int(by)
+        for (d_name in data_names) {
+            plot_int(
+                by,
+                c(d_name),
+                get_where(data = d_name),
+                filter_name = paste("for the", d_name, "data set"),
+                offset = get_min_energy(data = d_name))
+        }
+    }
+    if (group != "battery" && group != "data") {
+        by <- c("guardConfiguration", "battery", "data", group)
+        preprocess_counts_int(by)
+        for (b_name in battery_names) {
+            for (d_name in data_names) {
+                plot_int(
+                    by,
+                    c(b_name, d_name),
+                    get_where(battery = b_name, data = d_name),
+                    filter_name = paste("for the", d_name, "data set and the", b_name, "battery"),
+                    offset = get_min_energy(battery = b_name, data = d_name)
+                )
+            }
+        }
+    }
+}
+
 for (g in c(
-    "strategy",
-    "data",
-    # "configuration",
-    "battery")) {
+    # "strategy"
+     "data"
+    # , "configuration"
+    # , "battery"
+)) {
     custom_colours <- g == "strategy"
 
-    plot_packetSize(g, g, custom_colours = custom_colours)
-    plot_probability(g, g, custom_colours = custom_colours)
+    # plot_packetSize(g, g, custom_colours = custom_colours)
+    # plot_probability(g, g, custom_colours = custom_colours)
+    #
+    # plot_lower_range(g, g, custom_colours = custom_colours)
+    # plot_upper_range(g, g, custom_colours = custom_colours)
 
-    plot_lower_range(g, g, custom_colours = custom_colours)
-    plot_upper_range(g, g, custom_colours = custom_colours)
+    plot_power_guards_out(g, g, custom_colours = custom_colours)
 }
-plot_packetSize("probability", "probability")
-plot_probability("packetSize", "packet size")
+# plot_packetSize("probability", "probability")
+# plot_probability("packetSize", "packet size")
+#
+# plot_lower_range("probability", "probability")
+# plot_lower_range("packetSize", "packet size")
+# plot_upper_range("probability", "probability")
+# plot_upper_range("packetSize", "packet size")
 
-# plot_lower_range("probability")
-# plot_lower_range("packetSize")
-# plot_upper_range("probability")
-# plot_upper_range("packetSize")
+dbDisconnect(con)

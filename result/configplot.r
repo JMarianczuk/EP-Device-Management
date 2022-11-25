@@ -84,3 +84,5 @@ for (strat_name in strategy_names) {
                 ".pdf"))
     }
 }
+
+dbDisconnect(con)
