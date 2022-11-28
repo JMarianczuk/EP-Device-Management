@@ -5,6 +5,8 @@ library(dplyr)
 library(lubridate)
 library(stringr)
 
+Sys.setlocale(locale = "English")
+
 source("r_helpers/all_helpers.r")
 
 con <- create_db_connection("data.sqlite")
@@ -23,21 +25,20 @@ generation_name <- "Generation [kW]"
 net_load_name <- "Effective power [kW]"
 
 for (data_set in c(
-    "1LG",
-    "2L",
-    "3L",
-    "3LG",
-    "4LG",
-    "4_Grid",
-    "5L",
-    "6LG",
-    "6_Grid"
+    "1LG"
+    # , "2L"
+    # , "3LG"
+    , "4LG"
+    , "4_Grid"
+    # , "5L"
+    # , "6LG"
+    # , "6_Grid"
 )) {
 for (ts in c(
-    60,
-    240,
-    360,
-    1440
+    # 60,
+    240
+    , 360
+    , 1440
 )) {
     table_name <- paste0("data_R", data_set, "_", ts, "min")
     query <- paste(
@@ -110,14 +111,22 @@ for (ts in c(
         geom_line() +
         geom_hline(data = line_at_zero, aes(yintercept = value), color = "black") +
         facet_grid(rows = vars(facet_f), scales = "free_y", switch = "both") +
-        scale_x_datetime(expand = c(0.01, 0)) +
+        scale_x_datetime(
+            expand = c(0.01, 0),
+            # breaks = seq(
+            #     from = ymd('2015-01-01', tz = "CET", quiet = TRUE),
+            #     to = ymd('2018-01-01', tz = "CET", quiet = TRUE),
+            #     by = "2 months"),
+            date_labels = "%B %Y",
+            date_minor_breaks = "1 month"
+        ) +
         labs(colour = "Type of Load") +
         xlab("Date and Time") +
         theme(
             legend.position = "bottom",
             axis.title.y = element_blank())
 
-    ggsave(paste0("dataplots/data_R", data_set, "_", ts, "min.pdf"), thisplot, height = 15, width = 25, units = "cm")
+    ggsave(paste0("dataplots/data_R", data_set, "_", ts, "min.pdf"), thisplot, height = 15, width = 28, units = "cm")
 }}
 
 dbDisconnect(con)

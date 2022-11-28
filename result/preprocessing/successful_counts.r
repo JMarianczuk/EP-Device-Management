@@ -80,7 +80,8 @@ internal_calculate_top_ten <- function(
     by,
     table_name,
     config_name,
-    values) {
+    values,
+    filter = "") {
     top_x <- 200
     cartesian_execute(
         values,
@@ -112,7 +113,7 @@ internal_calculate_top_ten <- function(
                     sep = ","),
                 "from",
                 "simulation",
-                where)
+                combine_where(where, filter))
             res <- dbGetQuery(con, query)
             if (nrow(res) == 0) return()
             formula_by <- paste(by, collapse = " + ")
@@ -171,6 +172,8 @@ internal_calculate_top_ten <- function(
                         get_where(where, configuration = pareto[pareto_index,]$configuration)
                     } else if (config_name == "guardConfiguration") {
                         get_where(where, guardConfiguration = pareto[pareto_index,]$guardConfiguration)
+                    } else if (config_name == "strategy") {
+                        get_where(where, strategy = pareto[pareto_index,]$strategy)
                     }
                 )
                 res <- dbExecute(con, query)
@@ -246,7 +249,7 @@ cross_calculate_top_ten <- function(con, by, name) {
     }
 }
 
-calculate_top_ten <- function(con, by, name, config_name) {
+calculate_top_ten <- function(con, by, name, config_name, filter = "") {
     table_name <- successful_counts_table_name(name)
     query <- paste(
         "select exists(select 1 from",
@@ -266,7 +269,7 @@ calculate_top_ten <- function(con, by, name, config_name) {
                 values <- c(values, list("no_config"))
             }
         }
-        internal_calculate_top_ten(con, by, table_name, config_name, values)
+        internal_calculate_top_ten(con, by, table_name, config_name, values, filter)
     }
 }
 
@@ -340,12 +343,13 @@ preprocess_successful_counts <- function(by, name, con, filter = "") {
     config_name <- ""
     if ("configuration" %in% by) {
         config_name <- "configuration"
-    }
-    if ("guardConfiguration" %in% by) {
+    } else if ("guardConfiguration" %in% by) {
         config_name <- "guardConfiguration"
+    } else {
+        config_name <- "strategy"
     }
     if (config_name != "") {
-        calculate_top_ten(con, by, name, config_name)
+        calculate_top_ten(con, by, name, config_name, filter)
         cross_calculate <- ("strategy" %in% by && "configuration" %in% by && "data" %in% by)
         cross_calculate <- FALSE #such a big difference, no need
         if (cross_calculate) {

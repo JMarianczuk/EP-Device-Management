@@ -104,7 +104,7 @@ public class Analyzer
                     var stepLoad = Load(entry[i]);
                     var stepGen = Gen(entry[i]);
                     var stepEff = stepLoad - stepGen;
-                    MinMax(momentaryLoad - stepLoad, t,diffMomentaryStepLoad);
+                    MinMax(momentaryLoad - stepLoad, t, diffMomentaryStepLoad);
                     MinMax(momentaryGen - stepGen, t, diffMomentaryStepGen);
                     MinMax(momentaryEff - stepEff, t, diffMomentaryStepEff);
                 }

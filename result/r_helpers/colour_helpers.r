@@ -1,8 +1,11 @@
 library(RSQLite)
 library(ggplot2)
+library(ggthemes)
 
 qualitative_pallet <- function(n) {
-    scale_fill_discrete()$palette(n)
+    scale_colour_discrete()$palette(n)
+    # scale_color_brewer(type = "qual")$palette(n)
+    # scale_color_brewer(palette = "OrRd")$palette(n)
     # viridis_pal(1, 0, 1, 1, "D")(n)
 }
 

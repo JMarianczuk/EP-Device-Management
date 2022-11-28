@@ -53,6 +53,16 @@ con <- create_db_connection()
 # texts <- c("hi", "there", "hello there general kenobi")
 # get_where(quote_values = FALSE, data = "hello there")
 
-drop_preprocessed_tables(con, filter = "TableName like '%total_count%'")
+# drop_preprocessed_tables(con, filter = "TableName like '%total_count%'")
 # drop_preprocessed_tables(con, filter = "TableName like 'total_count_upper%'")
 # reset_top_ten(con)
+
+where <- "where you=hi there"
+empty <- ""
+just_clause <- "some=text"
+full_other <- "where somemore=othertext"
+print(combine_where(where, empty))
+print(combine_where(where, just_clause))
+print(combine_where(where, full_other))
+
+dbDisconnect(con)

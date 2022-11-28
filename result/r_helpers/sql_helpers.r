@@ -13,12 +13,23 @@ append_where <- function(where, append = "") {
     }
 }
 
+combine_where <- function(where, other_where = "") {
+    if (other_where == "") {
+        where
+    } else {
+        if (startsWith(other_where, "where ")) {
+            other_where <- substring(other_where, str_length("where ") + 1)
+        }
+        paste(where, "and", other_where)
+    }
+}
+
 get_where <- function(
     where = "",
     strategy = "",
     configuration = "",
     data = "",
-    guardConfiguration = "",
+    guardConfiguration = c(),
     battery = "",
     packetSize = "",
     probability = "",
@@ -30,10 +41,19 @@ get_where <- function(
     and = "",
     quote_values = TRUE) {
     w <- function(name, value, wrap = if (quote_values) '"' else "") {
-        if (value != "") {
-            paste0(name, "=", wrap, value, wrap)
-        } else {
+        if (length(value) == 0) {
             ""
+        } else if (length(value) == 1) {
+            if (value != "") {
+                paste0(name, "=", wrap, value, wrap)
+            } else {
+                ""
+            }
+        } else {
+            paste0(
+                "(",
+                paste0(name, "=", wrap, value, wrap, collapse = " OR "),
+                ")")
         }
     }
     app <- function(append, where) {
