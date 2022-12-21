@@ -53,21 +53,7 @@ namespace EpDeviceManagement.Simulation
             List<(int s, int strategySeed, Func<CachedDoublesRandomNumberGenerator>)> precomputedRandomValues;
             using (var progress = new ConsoleProgressBar())
             {
-                progress.Setup(precomputedLength * seeds.Count, "precalculating random values");
-                precomputedRandomValues = seeds.Select<int, (int, int, Func<CachedDoublesRandomNumberGenerator>)>(s =>
-                    {
-                        var precomputed_buffer = new double[precomputedLength];
-                        var rng = new SeededRandomNumberGenerator(s);
-                        var strategySeed = rng.Next(0, int.MaxValue);
-                        for (int i = 0; i < precomputed_buffer.Length; i += 1)
-                        {
-                            precomputed_buffer[i] = rng.NextDouble();
-                            progress.FinishOne();
-                        }
-
-                        return (s, strategySeed, () => new CachedDoublesRandomNumberGenerator(precomputed_buffer));
-                    })
-                    .ToList();
+                precomputedRandomValues = PrecomputedRandomValues(progress, precomputedLength, seeds);
             }
             Console.WriteLine("");
 
@@ -223,6 +209,27 @@ namespace EpDeviceManagement.Simulation
             Console.WriteLine($"simulating took {elapsed.Humanize(precision: 2)} ({elapsed}) and finished at {DateTime.Now:HH:mm:ss}");
         }
 
+        public static List<(int s, int strategySeed, Func<CachedDoublesRandomNumberGenerator>)> PrecomputedRandomValues(IProgressIndicator progress, int precomputedLength, IList<int> seeds)
+        {
+            List<(int s, int strategySeed, Func<CachedDoublesRandomNumberGenerator>)> precomputedRandomValues;
+            progress.Setup(precomputedLength * seeds.Count, "precalculating random values");
+            precomputedRandomValues = seeds.Select<int, (int, int, Func<CachedDoublesRandomNumberGenerator>)>(s =>
+                {
+                    var precomputed_buffer = new double[precomputedLength];
+                    var rng = new SeededRandomNumberGenerator(s);
+                    var strategySeed = rng.Next(0, int.MaxValue);
+                    for (int i = 0; i < precomputed_buffer.Length; i += 1)
+                    {
+                        precomputed_buffer[i] = rng.NextDouble();
+                        progress.FinishOne();
+                    }
+
+                    return (s, strategySeed, () => new CachedDoublesRandomNumberGenerator(precomputed_buffer));
+                })
+                .ToList();
+            return precomputedRandomValues;
+        }
+
         public delegate IEpDeviceController? CreateStrategy(
             Configuration configuration,
             bool withOscillationGuard = true);
@@ -254,7 +261,8 @@ namespace EpDeviceManagement.Simulation
             PowerFast generation,
             TimeSpan timeStep,
             PowerFast chargePower,
-            ref EnergyFast forfeited)
+            ref EnergyFast forfeited,
+            ref PowerFast maxChargePower)
         {
             // consider that PV generation has to be lowered to not exceed the battery limits
             var newSoC = battery.TrySimulate(timeStep, chargePower, PowerFast.Zero);
@@ -265,10 +273,12 @@ namespace EpDeviceManagement.Simulation
                 var newChargePower = GetNewChargePower(reducedPower, chargePower, generation);
                 forfeited += (chargePower - newChargePower) * timeStep;
                 battery.Simulate(timeStep, newChargePower, PowerFast.Zero);
+                maxChargePower = Units.Max(maxChargePower, newChargePower);
             }
             else
             {
                 battery.TrySetNewSoc(newSoC);
+                maxChargePower = Units.Max(maxChargePower, chargePower);
             }
         }
 
@@ -350,6 +360,8 @@ namespace EpDeviceManagement.Simulation
                 var batteryMinSoC = battery.CurrentStateOfCharge;
                 var batteryMaxSoC = battery.CurrentStateOfCharge;
                 var batterySoCSum = battery.CurrentStateOfCharge;
+                var batteryMaxChargePower = PowerFast.Zero;
+                var batteryMaxDischargePower = PowerFast.Zero;
 
                 void SetResultValues()
                 {
@@ -449,7 +461,9 @@ namespace EpDeviceManagement.Simulation
                                 result.FailReason = BatteryFailReason.ExceedDischargePower;
                                 return result;
                             }
+
                             battery.Simulate(dataTimeStep, PowerFast.Zero, dischargePower);
+                            batteryMaxDischargePower = Units.Max(batteryMaxDischargePower, dischargePower);
                         }
                         else
                         {
@@ -476,10 +490,11 @@ namespace EpDeviceManagement.Simulation
                             if (generation == PowerFast.Zero)
                             {
                                 battery.Simulate(dataTimeStep, chargePower, PowerFast.Zero);
+                                batteryMaxChargePower = Units.Min(batteryMaxChargePower, chargePower);
                             }
                             else
                             {
-                                DoBatteryChargingWithPvMppTracking(battery, generation, dataTimeStep, chargePower, ref totalCurtailedEnergy);
+                                DoBatteryChargingWithPvMppTracking(battery, generation, dataTimeStep, chargePower, ref totalCurtailedEnergy, ref batteryMaxChargePower);
                             }
 
                             batteryMinSoC = Units.Min(batteryMinSoC, battery.CurrentStateOfCharge);

@@ -2,6 +2,7 @@
 using System.Globalization;
 using BenchmarkDotNet.Running;
 using EpDeviceManagement.Contracts;
+using EpDeviceManagement.Control;
 using EpDeviceManagement.Control.Strategy;
 using EpDeviceManagement.Data;
 using EpDeviceManagement.Simulation;

@@ -113,6 +113,7 @@ public class TestData
                     upper,
                     config.Random,
                     config.DataSet.HasGeneration));
+#endif
                 unguardedStrategies.Add(config => new PemControl(
                     config.Battery,
                     config.PacketSize,
@@ -120,7 +121,13 @@ public class TestData
                     upper,
                     config.Random,
                     config.DataSet.HasGeneration));
-#endif
+                //unguardedStrategies.Add(config => new EstimationPemControl(
+                //    config.Battery,
+                //    config.PacketSize,
+                //    lower,
+                //    upper,
+                //    config.Random,
+                //    config.DataSet.HasGeneration));
                 var sendThresholds = new[] { -0.5, 0 };
                 var receiveThresholds = new[] { 0d };
                 var noOutgoings = new[]
@@ -139,6 +146,9 @@ public class TestData
                 };
                 foreach (var (sendThreshold, receiveThreshold) in sendThresholds.Cartesian(receiveThresholds, ValueTuple.Create))
                 {
+                    #if EXPERIMENTAL
+                    //break;
+                    #endif
                     foreach (var (noOutgoing, withEstimation) in noOutgoings.Cartesian(withEstimations, ValueTuple.Create))
                     {
                         if (noOutgoing && !withEstimation)
@@ -193,11 +203,11 @@ public class TestData
         var fullMargins = new[] { 0.5 }.Select(EnergyFast.FromKilowattHours);
         var outgoingGuardPowerBuffers =
 #if EXPERIMENTAL
-            MoreEnumerable.Sequence(4, 9, 1).Select(x => PowerFast.FromKilowatts(x)).ToList();
-        //new[] { PowerFast.FromKilowatts(7) };
+            //MoreEnumerable.Sequence(4, 9, 1).Select(x => PowerFast.FromKilowatts(x)).ToList();
+            new[] { PowerFast.FromKilowatts(0) };
 #else
             //MoreEnumerable.Sequence(4, 9, 1).Select(x => PowerFast.FromKilowatts(x)).ToList();
-            new[] { PowerFast.FromKilowatts(4) };
+            new[] { PowerFast.FromKilowatts(9) };
 #endif
 
         foreach (var (emptyMargin, fullMargin) in emptyMargins.Cartesian(fullMargins, ValueTuple.Create))
@@ -212,13 +222,14 @@ public class TestData
                     {
                         return null;
                     }
-                    if (outgoingPowerBuffer != outgoingGuardPowerBuffers[0] && !strategy.RequestsOutgoingPackets)
+                    if (outgoingPowerBuffer != outgoingGuardPowerBuffers.Last() && !strategy.RequestsOutgoingPackets)
                     {
                         //no need to put strategy with different outgoing buffers that does not even request outgoing packets
+                        //use only the buffer with 9kW because that is the good one used in the evaluation
                         return null;
                     }
 
-                    var strategyRequestsOutgoingPackets = config.DataSet.HasGeneration && strategy.RequestsOutgoingPackets;
+                    var strategyRequestsOutgoingPackets = config.DataSet.HasGeneration;
                     return o
                         ? new GuardedStrategyWrapper(
                             strategy,

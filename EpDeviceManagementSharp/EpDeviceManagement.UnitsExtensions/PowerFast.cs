@@ -10,7 +10,7 @@ public struct PowerFast
         this.watts = watts;
     }
 
-    public static PowerFast Zero { get; } = new PowerFast(0);
+    public static PowerFast Zero { get; } = FromWatts(0);
 
     public static PowerFast FromWatts(double watts)
         => new(watts);

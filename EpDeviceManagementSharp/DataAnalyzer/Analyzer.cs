@@ -35,9 +35,9 @@ public class Analyzer
         }
     }
 
-    public static async Task AnalyzePowerDifferenceAsync()
+    public static async Task AnalyzePowerDifferenceAsync(TimeSpan? controlStep)
     {
-        var timeStep = TimeSpan.FromMinutes(5);
+        var timeStep = controlStep ?? TimeSpan.FromMinutes(5);
         IList<DataSet> data;
         using (var progress = new ConsoleProgressBar())
         {
@@ -277,6 +277,7 @@ CREATE TABLE
             await tableCommand.ExecuteNonQueryAsync();
             var batteries = TestData.GetBatteries(extended: true).Append(NoBatteryConfiguration).ToList();
             progress.Setup(batteries.Count * data.Count, "Calculating Stats");
+            var dataTimeStep = TimeSpan.FromMinutes(1);
             foreach (var batteryConfiguration in batteries)
             {
                 foreach (var ds in data)
@@ -287,15 +288,15 @@ CREATE TABLE
                     var totalIncomingKwh = 0d;
                     var totalOutgoingKwh = 0d;
                     var batteryKwh = batteryCapacityKwh / 2;
-                    foreach (var entry in ds.Data)
+                    foreach (var entry in ds.Data.SelectMany(x => x))
                     {
-                        var load = entry.Average(ds.GetLoad);
-                        var generation = entry.Average(ds.GetGeneration);
-                        var net = load - generation;
-                        if (net > PowerFast.Zero)
+                        var load = ds.GetLoad(entry);
+                        var generation = ds.GetGeneration(entry);
+                        var effective = load - generation;
+                        if (effective > PowerFast.Zero)
                         {
                             // load > generation
-                            batteryKwh -= (net * timeStep).KilowattHours;
+                            batteryKwh -= (effective * dataTimeStep).KilowattHours;
                             if (batteryKwh < 0)
                             {
                                 // battery empty, acquire exactly the deficit of energy without losses from the grid
@@ -306,7 +307,12 @@ CREATE TABLE
                         else
                         {
                             // load <= generation
-                            batteryKwh += Math.Abs((net * timeStep).KilowattHours);
+                            // effective <= 0
+
+                            var chargePower = -effective;
+                            chargePower = Units.Min(chargePower, battery.MaximumChargePower);
+                            batteryKwh += (chargePower * dataTimeStep).KilowattHours;
+                            //batteryKwh += Math.Abs((effective * dataTimeStep).KilowattHours);
                             if (batteryKwh > batteryCapacityKwh)
                             {
                                 // battery full, send exactly the excess of energy without losses to the grid
