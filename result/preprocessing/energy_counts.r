@@ -13,6 +13,20 @@ energy_count_table_name <- function(by) {
     table_name
 }
 
+create_simulation_with_min_incoming <- function(con) {
+    simulation_with_min_incoming <- "simulation_with_min_incoming"
+    query <- paste(
+        "CREATE VIEW IF NOT EXISTS",
+        simulation_with_min_incoming,
+        "AS",
+        "SELECT s.*, d.totalIncoming_kwh as min_incoming",
+        "FROM simulation s",
+        "JOIN data_stat d",
+        "ON s.data = d.data AND s.battery = d.battery")
+    dbExecute(con, query)
+    insert_preprocessed_view_name(con, simulation_with_min_incoming)
+}
+
 get_energy_count_query <- function(
     by,
     select_by,
@@ -29,7 +43,7 @@ get_energy_count_query <- function(
             "avg(energy_kwh_in) as avg_energy_in",
             "avg(energy_kwh_out) as avg_energy_out",
             "avg(generationMissed_kwh) as avg_curtailed_energy",
-            "avg(energy_kwh_in + generationMissed_kwh) as avg_sum",
+            "avg(energy_kwh_in + generationMissed_kwh - min_incoming) as avg_wasted",
             "avg(incomingPowerGuards) as avg_powerGuard_in",
             "avg(outgoingPowerGuards) as avg_powerGuard_out",
             "avg(emptyCapacityGuards) as avg_capacityGuard_empty",
@@ -53,6 +67,7 @@ preprocess_energy_counts <- function(
     con,
     select_by = c(),
     filter = "") {
+    create_simulation_with_min_incoming(con)
     by <- unique(by)
     if (length(select_by) == 0) {
         select_by <- by
@@ -66,7 +81,7 @@ preprocess_energy_counts <- function(
         by,
         select_by,
         table_name,
-        "simulation",
+        "simulation_with_min_incoming",
         where)
     res <- dbExecute(con, query)
     res <- insert_preprocessed_table_name(con, table_name)

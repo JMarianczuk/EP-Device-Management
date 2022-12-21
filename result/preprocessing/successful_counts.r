@@ -345,6 +345,8 @@ preprocess_successful_counts <- function(by, name, con, filter = "") {
         config_name <- "configuration"
     } else if ("guardConfiguration" %in% by) {
         config_name <- "guardConfiguration"
+    } else if ("probability" %in% by) {
+        config_name <- "probability"
     } else {
         config_name <- "strategy"
     }

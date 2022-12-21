@@ -13,6 +13,18 @@ append_where <- function(where, append = "") {
     }
 }
 
+append_and <- function(where, append = "") {
+    if (append == "") {
+        where
+    } else {
+        if (where == "") {
+            append
+        } else {
+            paste(where, "and", append)
+        }
+    }
+}
+
 combine_where <- function(where, other_where = "") {
     if (other_where == "") {
         where
