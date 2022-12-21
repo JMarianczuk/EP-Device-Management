@@ -4,6 +4,7 @@ library(ggforce)
 library(dplyr)
 library(lubridate)
 library(stringr)
+library(scales)
 
 Sys.setlocale(locale = "English")
 
@@ -20,6 +21,17 @@ get_mid <- function(earlier_date, later_date, earlier_value, later_value) {
     mid
 }
 
+int_breaks <- function(x, n = 5) {
+    breaks <- pretty(x, n)
+    integer_breaks <- breaks[abs(breaks %% 1) < .Machine$double.eps ^ 0.5]
+    integer_breaks
+    # if (length(integer_breaks) <= 3) {
+    #     breaks
+    # } else {
+    #     integer_breaks
+    # }
+}
+
 load_name <- "Load [kW]"
 generation_name <- "Generation [kW]"
 net_load_name <- "Effective power [kW]"
@@ -28,8 +40,8 @@ for (data_set in c(
     "1LG"
     # , "2L"
     # , "3LG"
-    , "4LG"
-    , "4_Grid"
+    # , "4LG"
+    # , "4_Grid"
     # , "5L"
     # , "6LG"
     # , "6_Grid"
@@ -42,16 +54,16 @@ for (ts in c(
 )) {
     table_name <- paste0("data_R", data_set, "_", ts, "min")
     query <- paste(
-        paste(
-            "select",
-            "*, load_kw as value,", quoted(load_name), "as facet",
-            "from",
-            table_name),
-        paste(
-            "select",
-            "*, generation_kw as value,", quoted(generation_name), "as facet",
-            "from",
-            table_name),
+        # paste(
+        #     "select",
+        #     "*, load_kw as value,", quoted(load_name), "as facet",
+        #     "from",
+        #     table_name),
+        # paste(
+        #     "select",
+        #     "*, generation_kw as value,", quoted(generation_name), "as facet",
+        #     "from",
+        #     table_name),
         paste(
             "select",
             "*, load_kw - generation_kw as value,", quoted(net_load_name), "as facet",
@@ -110,7 +122,10 @@ for (ts in c(
         )) +
         geom_line() +
         geom_hline(data = line_at_zero, aes(yintercept = value), color = "black") +
-        facet_grid(rows = vars(facet_f), scales = "free_y", switch = "both") +
+        facet_grid(
+            rows = vars(facet_f)
+            , scales = "free_y"
+            , switch = "both") +
         scale_x_datetime(
             expand = c(0.01, 0),
             # breaks = seq(
@@ -120,13 +135,24 @@ for (ts in c(
             date_labels = "%B %Y",
             date_minor_breaks = "1 month"
         ) +
-        labs(colour = "Type of Load") +
+        scale_y_continuous(
+            breaks = int_breaks
+            # , expand = c(0,0)
+        ) +
+        expand_limits(y = c(0, 2)) +
+        labs(colour = "") +
         xlab("Date and Time") +
         theme(
-            legend.position = "bottom",
+            legend.position = "none",
+            plot.margin = unit(c(0, 0, 0, 0), "cm"),
+            axis.text.x = element_blank(),
+            axis.ticks.x = element_blank(),
+            axis.text.y = element_blank(),
+            axis.ticks.y = element_blank(),
+            axis.title.x = element_blank(),
             axis.title.y = element_blank())
 
-    ggsave(paste0("dataplots/data_R", data_set, "_", ts, "min.pdf"), thisplot, height = 15, width = 28, units = "cm")
+    ggsave(paste0("dataplots/data_R", data_set, "_", ts, "min_eff.pdf"), thisplot, height = 4, width = 16.5, units = "cm")
 }}
 
 dbDisconnect(con)

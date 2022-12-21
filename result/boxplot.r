@@ -40,6 +40,12 @@ cat("-sdbt")
 
 preprocess_successful_counts(c("strategy", "configuration", "data", "battery", "timeStep"), "scdbtr", con, filter = "where guardConfiguration in ('p(0.0, 9.0) c(0.7, 0.5)', 'p(0.0) c(0.5)')")
 cat("-scdbtr")
+preprocess_successful_counts(c("strategy", "configuration", "data", "battery", "timeStep"), "scdbtr2", con, filter = "where guardConfiguration in ('p(0.0, 9.0) c(0.7, 0.5)', 'p(0.0) c(0.5)') and probability < 0.45")
+cat("-scdbtr2")
+preprocess_successful_counts(c("strategy", "configuration", "data", "battery", "timeStep"), "scdbtr3", con, filter = "where guardConfiguration in ('p(0.0, 9.0) c(0.7, 0.5)', 'p(0.0) c(0.5)') and packetSize >= 0.39 and packetSize <= 0.61")
+cat("-scdbtr3")
+preprocess_successful_counts(c("strategy", "configuration", "data", "battery", "timeStep"), "scdbtr4", con, filter = "where guardConfiguration in ('p(0.0, 9.0) c(0.7, 0.5)', 'p(0.0) c(0.5)') and packetSize == 0.5")
+cat("-scdbtr4")
 
 preprocess_successful_counts(c("strategy", "configuration"), "sc", con)
 cat("-sc")
@@ -63,6 +69,13 @@ preprocess_successful_counts(c("guardConfiguration", "battery", "timeStep"), "gb
 cat("-gbt")
 preprocess_successful_counts(c("guardConfiguration", "data", "battery", "timeStep"), "gdbt", con, filter = "where strategy not like '%NoSend'")
 cat("-gdbt")
+
+preprocess_successful_counts(c("probability", "data"), "pd", con)
+cat("-pd")
+preprocess_successful_counts(c("probability", "battery"), "pb", con)
+cat("-pb")
+preprocess_successful_counts(c("probability", "data", "battery"), "pdb", con)
+cat("-pdb")
 cat("\n")
 
 preprocess_energy_stats(con)
@@ -83,12 +96,10 @@ get_short <- function(strat_name = "", data_name = "", battery_name = "", timest
     if (strat_name != "") {
         res <- paste0(res, "s")
     }
-    if (config_type == "configuration") {
+    if (startsWith(config_type, "configuration")) {
         res <- paste0(res, "c")
     } else if (config_type == "guardConfiguration") {
         res <- paste0(res, "g")
-    } else if (config_type == "configuration+reduced") {
-        res <- paste0(res, "c")
     } else if (config_type == "strategy") {
         res <- paste0(res, "s")
     }
@@ -101,8 +112,14 @@ get_short <- function(strat_name = "", data_name = "", battery_name = "", timest
     if (timestep_name != "") {
         res <- paste0(res, "t")
     }
-    if (config_type == "configuration+reduced") {
+    if (endsWith(config_type, "+reduced")) {
         res <- paste0(res, "r")
+    } else if (endsWith(config_type, "+reduced2")) {
+        res <- paste0(res, "r2")
+    } else if (endsWith(config_type, "+reduced3")) {
+        res <- paste0(res, "r3")
+    } else  if (endsWith(config_type, "+reduced4")) {
+        res <- paste0(res, "r4")
     }
     res
 }
@@ -256,7 +273,7 @@ get_number_of_combinations <- function(strat_name, data_name = "", battery_name 
 }
 
 get_plot_height <- function(number_of_configurations) {
-    plot_height <- 2.5 + number_of_configurations / 3
+    plot_height <- 2.3 + number_of_configurations / 3.3
     plot_height
 }
 
@@ -274,9 +291,11 @@ do_plot_int <- function(
     file_name,
     filter = "",
     filter_name = "",
-    plot_all = FALSE) {
+    plot_all = FALSE,
+    minimum_probability = 0) {
     query <- get_query(data_name, battery_name, strat_name, timestep_name, config_type = y_name, filter = filter, plot_all = plot_all)
     res <- dbGetQuery(con, query)
+    res <- res[(res$count / res$totalCount) >= minimum_probability,]
     if (nrow(res) == 0) {
         return()
     }
@@ -297,7 +316,7 @@ do_plot_int <- function(
         plot_all = plot_all)
     strat_with_direction <- if (str_contains(strat_name, "Direction")) TRUE else FALSE
     data_has_solar <- data_name != "" && !str_ends(data_name, "L")
-    draw_second_vertical_line <- data_has_solar
+    draw_second_vertical_line <- data_has_solar && FALSE
     min_energy_breaks <- if (draw_second_vertical_line) {
         if (!is.na(min_energy_3)) {
             c(min_energy, min_energy_2, min_energy_3)
@@ -307,7 +326,7 @@ do_plot_int <- function(
     } else {
         min_energy
     }
-    if (y_name == "configuration+reduced") {
+    if (startsWith(y_name, "configuration")) {
         y_name <- "configuration"
     }
     max_y_length <- max(str_length(res[[y_name]]))
@@ -355,7 +374,12 @@ do_plot_int <- function(
                 geom_vline(xintercept = min_energy_3, colour = "lightblue", linetype = "dashed")
         }
     }
-    ggsave(file_name, thisplot, width = 25, height = get_plot_height(number_of_configurations), units = "cm")
+    prob_suffix <- if (minimum_probability > 0) paste0("_min", minimum_probability, "prob") else ""
+
+    number_of_lines <- length(unique(res[[y_name]]))
+    plot_height <- get_plot_height(number_of_lines)
+    plot_width <- if (minimum_probability > 0) 21 else 25
+    ggsave(paste0(file_name, prob_suffix, ".pdf"), thisplot, width = plot_width, height = plot_height, units = "cm")
 
     if (data_has_solar || data_name == "" || TRUE) {
         max_energy <- max(res$energy_kwh_in + res$generationMissed_kwh - res$min_incoming)
@@ -386,13 +410,13 @@ do_plot_int <- function(
                 axis.title.y = element_blank()
             )
 
-        ggsave(str_replace(file_name, "\\.", "_wasted."), otherplot, width = 25, height = get_plot_height(number_of_configurations), units = "cm")
+        ggsave(paste0(file_name, prob_suffix, "_wasted.pdf"), otherplot, width = plot_width, height = plot_height, units = "cm")
     }
 }
 
 do_plot <- function(data_name, battery_name, strat_name, timestep_name, file_name) {
     do_plot_int(data_name, battery_name, strat_name, timestep_name, "configuration", "Configuration", file_name)
-    do_plot_int(data_name, battery_name, strat_name, timestep_name, "guardConfiguration", "Guard Configuration", str_replace(file_name, "\\.", "_guardConfig."))
+    do_plot_int(data_name, battery_name, strat_name, timestep_name, "guardConfiguration", "Guard Configuration", paste0(file_name, "_guardConfig"))
 }
 
 do_plot_guards <- function(data_name, battery_name, timestep_name, file_name, filter = "") {
@@ -400,11 +424,19 @@ do_plot_guards <- function(data_name, battery_name, timestep_name, file_name, fi
 }
 
 do_plot_strategies <- function(data_name, battery_name, timestep_name, file_name, filter = "") {
-    do_plot_int(data_name, battery_name, strat_name = "", timestep_name, "strategy", "Strategy", file_name, filter = filter, plot_all = TRUE)
+    do_plot_int(data_name, battery_name, strat_name = "", timestep_name, "strategy", "Strategy", file_name,
+                filter = append_and(filter, "strategy not like '%NoSend%'"), plot_all = TRUE)
 }
 
-do_plot_reduced <- function(data_name, battery_name, strat_name, timestep_name, file_name, filter = "", plot_all = FALSE) {
-    do_plot_int(data_name, battery_name, strat_name, timestep_name, "configuration+reduced", "Configuration", file_name, filter = filter, plot_all = plot_all)
+do_plot_reduced <- function(data_name, battery_name, strat_name, timestep_name, file_name, filter = "", plot_all = FALSE, minimum_probability = 0) {
+    do_plot_int(data_name, battery_name, strat_name, timestep_name, "configuration+reduced", "Configuration",
+                file_name, filter = filter, plot_all = plot_all, minimum_probability = minimum_probability)
+    # do_plot_int(data_name, battery_name, strat_name, timestep_name, "configuration+reduced2", "Configuration",
+    #             paste0(file_name, "_lowProb"), filter = paste(filter, "and probability < 0.45"), plot_all = plot_all, minimum_probability = minimum_probability)
+    # do_plot_int(data_name, battery_name, strat_name, timestep_name, "configuration+reduced3", "Configuration",
+    #             paste0(file_name, "_midPS"), filter = paste(filter, "and packetSize >= 0.39 and packetSize <= 0.61"), plot_all = plot_all, minimum_probability = minimum_probability)
+    do_plot_int(data_name, battery_name, strat_name, timestep_name, "configuration+reduced4", "Configuration",
+                paste0(file_name, "_0.5PS"), filter = paste(filter, "and packetSize == 0.5"), plot_all = plot_all, minimum_probability = minimum_probability)
 }
 
 exists_successful_ <- function(where) {
@@ -433,22 +465,24 @@ for (battery_name in battery_configurations) {
                 if (options$strategy != "" && options$strategy != strat_name) {
                     next
                 }
+                if (data_name != "R1LG" || battery_name != "A" || (strat_name != "PEM Control" && strat_name != "PRC + EST")) {
+                    next
+                }
                 if (exists_successful(data_name, battery_name, strat_name, timestep_name)) {
-                    do_plot(
-                        data_name,
-                        battery_name,
-                        strat_name,
-                        timestep_name,
-                        paste0(
-                            "plots/boxplot_",
-                            normalize(battery_name),
-                            "_",
-                            normalize(data_name),
-                            "_",
-                            normalize(strat_name),
-                            "_",
-                            normalize(timestep_name),
-                            ".pdf"))
+                    # do_plot(
+                    #     data_name,
+                    #     battery_name,
+                    #     strat_name,
+                    #     timestep_name,
+                    #     paste0(
+                    #         "plots/boxplot_",
+                    #         normalize(battery_name),
+                    #         "_",
+                    #         normalize(data_name),
+                    #         "_",
+                    #         normalize(strat_name),
+                    #         "_",
+                    #         normalize(timestep_name)))
                     do_plot_reduced(
                         data_name,
                         battery_name,
@@ -462,8 +496,7 @@ for (battery_name in battery_configurations) {
                             "_",
                             normalize(strat_name),
                             "_",
-                            normalize(timestep_name),
-                            ".pdf"),
+                            normalize(timestep_name)),
                         filter = "guardConfiguration in ('p(0.0, 9.0) c(0.7, 0.5)', 'p(0.0) c(0.5)')")
                     do_plot_reduced(
                         data_name,
@@ -478,68 +511,88 @@ for (battery_name in battery_configurations) {
                             "_",
                             normalize(strat_name),
                             "_",
-                            normalize(timestep_name),
-                            "_all",
-                            ".pdf"),
+                            normalize(timestep_name)),
                         filter = "guardConfiguration in ('p(0.0, 9.0) c(0.7, 0.5)', 'p(0.0) c(0.5)')",
-                        plot_all = TRUE)
+                        minimum_probability = 0.2)
+                    # do_plot_reduced(
+                    #     data_name,
+                    #     battery_name,
+                    #     strat_name,
+                    #     timestep_name,
+                    #     paste0(
+                    #         "plots/boxplot_",
+                    #         normalize(battery_name),
+                    #         "_9kW_",
+                    #         normalize(data_name),
+                    #         "_",
+                    #         normalize(strat_name),
+                    #         "_",
+                    #         normalize(timestep_name),
+                    #         "_all"),
+                    #     filter = "guardConfiguration in ('p(0.0, 9.0) c(0.7, 0.5)', 'p(0.0) c(0.5)')",
+                    #     plot_all = TRUE)
                 }
             }
-            if (exists_successful(data_name = data_name, battery_name = battery_name, timestep_name = timestep_name)) {
-                do_plot_guards(
-                    data_name,
-                    battery_name,
-                    timestep_name,
-                    paste0(
-                        "plots/boxplot_",
-                        "guards_",
-                        normalize(battery_name),
-                        "_",
-                        normalize(data_name),
-                        "_",
-                        normalize(timestep_name),
-                        ".pdf"),
-                    filter = "strategy not like '%NoSend'")
-                do_plot_strategies(
-                    data_name,
-                    battery_name,
-                    timestep_name,
-                    paste0(
-                        "plots/boxplot_",
-                        normalize(battery_name),
-                        "_",
-                        normalize(data_name),
-                        "_",
-                        normalize(timestep_name),
-                        ".pdf"),
-                    filter = "guardConfiguration in ('p(0.0, 9.0) c(0.7, 0.5)', 'p(0.0) c(0.5)')")
-            }
+            # if (exists_successful(data_name = data_name, battery_name = battery_name, timestep_name = timestep_name)) {
+            #     # do_plot_guards(
+            #     #     data_name,
+            #     #     battery_name,
+            #     #     timestep_name,
+            #     #     paste0(
+            #     #         "plots/boxplot_",
+            #     #         "guards_",
+            #     #         normalize(battery_name),
+            #     #         "_",
+            #     #         normalize(data_name),
+            #     #         "_",
+            #     #         normalize(timestep_name)),
+            #     #     filter = "strategy not like '%NoSend'")
+            #     do_plot_strategies(
+            #         data_name,
+            #         battery_name,
+            #         timestep_name,
+            #         paste0(
+            #             "plots/boxplot_",
+            #             normalize(battery_name),
+            #             "_",
+            #             normalize(data_name),
+            #             "_",
+            #             normalize(timestep_name)),
+            #         filter = "guardConfiguration in ('p(0.0, 9.0) c(0.7, 0.5)', 'p(0.0) c(0.5)')")
+            #     # do_plot_probability(
+            #     #     data_name,
+            #     #     battery_name,
+            #     #     timestep_name,
+            #     #     paste0(
+            #     #         "plots/boxplot_",
+            #     #         normalize(battery_name),
+            #     #         "_",
+            #     #         normalize(data_name)))
+            # }
         }
-        if (exists_successful(battery_name = battery_name, timestep_name = timestep_name)) {
-            do_plot_guards(
-                "",
-                battery_name,
-                timestep_name,
-                paste0(
-                    "plots/boxplot_",
-                    "guards_",
-                    normalize(battery_name),
-                    "_",
-                    normalize(timestep_name),
-                    ".pdf"),
-                filter = "strategy not like '%NoSend'")
-            do_plot_strategies(
-                "",
-                battery_name,
-                timestep_name,
-                paste0(
-                    "plots/boxplot_",
-                    normalize(battery_name),
-                    "_",
-                    normalize(timestep_name),
-                    ".pdf"),
-                filter = "guardConfiguration in ('p(0.0, 9.0) c(0.7, 0.5)', 'p(0.0) c(0.5)')")
-        }
+        # if (exists_successful(battery_name = battery_name, timestep_name = timestep_name)) {
+        #     # do_plot_guards(
+        #     #     "",
+        #     #     battery_name,
+        #     #     timestep_name,
+        #     #     paste0(
+        #     #         "plots/boxplot_",
+        #     #         "guards_",
+        #     #         normalize(battery_name),
+        #     #         "_",
+        #     #         normalize(timestep_name)),
+        #     #     filter = "strategy not like '%NoSend'")
+        #     do_plot_strategies(
+        #         "",
+        #         battery_name,
+        #         timestep_name,
+        #         paste0(
+        #             "plots/boxplot_",
+        #             normalize(battery_name),
+        #             "_",
+        #             normalize(timestep_name)),
+        #         filter = "guardConfiguration in ('p(0.0, 9.0) c(0.7, 0.5)', 'p(0.0) c(0.5)')")
+        # }
     }
 }
 
